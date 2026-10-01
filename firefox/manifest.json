@@ -3,6 +3,13 @@
   "name": "Tailscale Clean Console",
   "version": "1.0.0",
   "description": "Hides the trial/billing banner and shows the Tailscale admin Machines page as a clean card grid.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "96": "icons/icon96.png",
+    "128": "icons/icon128.png"
+  },
   "browser_specific_settings": {
     "gecko": {
       "id": "tailscale-clean-console@local",

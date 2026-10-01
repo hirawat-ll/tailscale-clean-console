@@ -40,7 +40,11 @@ The layout and hidden elements are remembered per-site in `localStorage`
 chrome/   Chrome / Edge extension (Manifest V3)
 firefox/  Firefox extension (Manifest V2)
 test/     mock Machines page + assertion harness
+assets/   store zips, icons, banners and listing copy for both stores
 ```
 
 Run the tests with `node test/serve.mjs`, then open
 <http://localhost:8787/test/harness.html>.
+
+Unofficial project, not affiliated with Tailscale Inc. See
+[PRIVACY.md](PRIVACY.md).
