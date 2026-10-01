@@ -23,6 +23,7 @@ const TYPES = {
 };
 
 const isMachines = (path) => path === "/admin/machines" || path.startsWith("/admin/machines/");
+const FLAVORS = new Set(["chrome", "firefox"]);
 
 createServer(async (req, res) => {
   const url = new URL(req.url, "http://localhost");
@@ -39,12 +40,19 @@ createServer(async (req, res) => {
     return;
   }
 
-  if (file.endsWith("mock.html") && url.searchParams.has("bare")) {
-    body = Buffer.from(
-      String(body)
+  if (file.endsWith("mock.html")) {
+    /* mock.html links the firefox files; ?ext=chrome swaps them so the same
+       fixture can exercise either extension. ?bare drops them entirely. */
+    const flavor = FLAVORS.has(url.searchParams.get("ext")) ? url.searchParams.get("ext") : "firefox";
+    let html = String(body);
+    if (url.searchParams.has("bare")) {
+      html = html
         .replace('<link rel="stylesheet" href="/firefox/styles.css">', "")
-        .replace('<script src="/firefox/content.js"></script>', "")
-    );
+        .replace('<script src="/firefox/content.js"></script>', "");
+    } else if (flavor !== "firefox") {
+      html = html.split("/firefox/").join(`/${flavor}/`);
+    }
+    body = Buffer.from(html);
   }
 
   res.writeHead(200, { "content-type": TYPES[extname(file)] || "application/octet-stream" });
@@ -52,4 +60,5 @@ createServer(async (req, res) => {
 }).listen(PORT, () => {
   console.log(`test harness: http://localhost:${PORT}/test/harness.html`);
   console.log(`machines mock: http://localhost:${PORT}/admin/machines/`);
+  console.log(`pick a flavor with ?ext=chrome or ?ext=firefox`);
 });

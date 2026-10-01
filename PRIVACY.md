@@ -14,9 +14,9 @@ entirely on your computer and does not collect, transmit, or sell any data.
 
 ## What it stores
 
-Your layout choice (grid or list) and the list of elements you hid are saved
-in your browser's **local storage for the Tailscale site**
-(`localStorage` key `tsc:settings:v1`). This data:
+Your layout choice (`view`), the elements you hid (`hidden`), and the devices
+you hid (`hiddenDevices`) are saved in your browser's **local storage for the
+Tailscale site** (`localStorage` key `tsc:settings:v1`). This data:
 
 - never leaves your browser,
 - is not readable by the extension on any other site,

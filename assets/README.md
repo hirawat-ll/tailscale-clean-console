@@ -37,6 +37,12 @@ Pillow. Icons are written straight into `chrome/icons/` and `firefox/icons/` so
 the packaged extensions always match. All machine names, IPs, owners and times
 in the fixture are invented.
 
+Fonts fall back from Arial (macOS) to DejaVu/Liberation (Linux), so the same
+build runs in CI. `.github/workflows/assets.yml` regenerates these files when
+the UI changes and uploads them as artifacts (it does not commit, because
+Linux fonts differ from the curated macOS captures);
+`.github/workflows/release.yml` builds and attaches the zips on a `v*` tag.
+
 ## Before submitting
 
 1. Bump `version` in `chrome/manifest.json` and `firefox/manifest.json`.

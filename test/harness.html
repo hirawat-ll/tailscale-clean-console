@@ -6,21 +6,38 @@
 <style>html,body{margin:0} iframe{width:1400px;height:1700px;border:0;display:block}</style>
 </head>
 <body>
+<div id="flavor" style="font:12px monospace;margin:8px 8px 0"></div>
 <pre id="results" style="font:12px monospace;margin:8px">running...</pre>
-<iframe id="frame" src="/admin/machines/"></iframe>
+<iframe id="frame"></iframe>
 <script>
 /* Dev-only test harness: loads the mock Machines page in an iframe and drives
-   the extension to assert its behavior. Used with headless Chrome --dump-dom. */
+   the extension to assert its behavior. Used with headless Chrome --dump-dom.
+   ?ext=chrome|firefox picks which extension build to load (default firefox);
+   ?end=list leaves the fixture in list view for screenshots. */
 const log = [];
 const results = document.getElementById('results');
 const frame = document.getElementById('frame');
-const end = new URLSearchParams(location.search).get('end'); // 'list' | 'grid'
+const params = new URLSearchParams(location.search);
+const end = params.get('end'); // 'list' | 'grid'
+const ext = params.get('ext') === 'chrome' ? 'chrome' : 'firefox';
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 function assert(name, cond) { log.push((cond ? 'PASS' : 'FAIL') + ' ' + name); }
+document.getElementById('flavor').textContent = 'extension: ' + ext;
+frame.src = '/admin/machines/?ext=' + ext;
 
+let booted = false;
 frame.addEventListener('load', async () => {
   const w = frame.contentWindow;
   const d = frame.contentDocument;
+
+  /* fresh run: drop any leftover hide from a previous run of the same origin */
+  if (!booted) {
+    booted = true;
+    w.localStorage.removeItem('tsc:settings:v1');
+    w.location.reload();
+    return;
+  }
+
   const cs = (el) => w.getComputedStyle(el);
 
   await wait(500);

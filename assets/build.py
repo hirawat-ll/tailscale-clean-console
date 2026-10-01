@@ -20,17 +20,32 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from capture import capture_all
 
 ROOT = Path(__file__).resolve().parent.parent
-FONT_REG = "/System/Library/Fonts/Supplemental/Arial.ttf"
-FONT_BOLD = "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
-
 ACCENT = (124, 58, 237)
 GREEN = (34, 160, 107)
 DARK_TOP = (37, 36, 43)
 DARK_BOTTOM = (18, 18, 22)
 
+# Arial on macOS, DejaVu/Liberation on Linux (CI), so build.py runs anywhere.
+FONT_REG = (
+    "/System/Library/Fonts/Supplemental/Arial.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+)
+FONT_BOLD = (
+    "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+)
+
 
 def font(size, bold=False):
-    return ImageFont.truetype(FONT_BOLD if bold else FONT_REG, size)
+    for path in FONT_BOLD if bold else FONT_REG:
+        if Path(path).exists():
+            return ImageFont.truetype(path, size)
+    try:
+        return ImageFont.load_default(size)
+    except TypeError:  # Pillow < 10.1 has no size argument
+        return ImageFont.load_default()
 
 
 # --------------------------------------------------------------- icon --------

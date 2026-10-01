@@ -50,7 +50,16 @@ assets/   store zips, icons, banners and listing copy for both stores
 ```
 
 Run the tests with `node test/serve.mjs`, then open
-<http://localhost:8787/test/harness.html>.
+<http://localhost:8787/test/harness.html> (`?ext=chrome` or `?ext=firefox`).
+For a headless run of both builds:
+
+```sh
+python3 test/run_harness.py   # needs pip install playwright && playwright install chromium
+```
+
+CI runs the harness for both builds, `web-ext lint` on Firefox, a privacy
+check (`test/check_privacy.mjs`) and a Chrome/Firefox parity check on every
+push. Tagged `v*` pushes publish the store zips to a GitHub release.
 
 See [ROADMAP.md](ROADMAP.md) for planned improvements.
 

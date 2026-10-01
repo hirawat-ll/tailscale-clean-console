@@ -20,6 +20,8 @@ extension itself.
   totals), with one-click reset.
 - Settings (view, hidden elements, hidden devices) auto-saved per-site in
   `localStorage` under `tsc:settings:v1`.
+- CI: headless harness for both builds, `web-ext lint`, privacy/parity guards,
+  and `v*` tag releases with the store zips attached.
 
 ## Onboarding & first-run
 
@@ -80,12 +82,17 @@ extension itself.
 
 ## Packaging & distribution
 
-- [ ] GitHub Actions: run `test/harness.html` headless on every push, for both
-      `chrome/` and `firefox/`.
-- [ ] Rebuild store zips with `assets/build.py` in CI and attach them to tags.
-- [ ] Run `web-ext lint` for the Firefox build in CI.
-- [ ] Keep `PRIVACY.md` in sync whenever a new field is stored.
-- [ ] Regenerate store screenshots when the UI changes.
+- [x] GitHub Actions runs `test/harness.html` headless on every push for both
+      builds (`.github/workflows/ci.yml` + `test/run_harness.py`, `?ext=…`).
+- [x] `assets/package.sh` builds the store zips in CI and attaches them to
+      `v*` tag releases (`.github/workflows/release.yml`).
+- [x] `web-ext lint` runs for the Firefox build in CI (0 errors / 0 warnings).
+- [x] `node test/check_privacy.mjs` keeps `PRIVACY.md` in sync with every
+      stored field, and `test/check_parity.mjs` keeps the two builds identical.
+- [x] `assets/build.py` regenerates screenshots and zips when the UI changes
+      and uploads them as CI artifacts (`.github/workflows/assets.yml`); fonts
+      fall back across platforms so it runs on Linux, and the workflow leaves
+      committing to a local (macOS-rendered) run to avoid font churn.
 
 ## Maybe later
 

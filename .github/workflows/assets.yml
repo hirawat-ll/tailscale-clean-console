@@ -1,0 +1,58 @@
+name: Assets
+
+# Regenerate icons, README/store screenshots, promo tiles and the store zips,
+# then upload them as artifacts. This does NOT commit: the mock page renders
+# with OS fonts, so Linux output differs from the curated macOS captures. Use
+# the artifact to review, or run `python3 assets/build.py` locally to commit.
+#
+#   gh workflow run Assets
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "chrome/**"
+      - "firefox/**"
+      - "test/mock.html"
+      - "assets/build.py"
+      - "assets/capture.py"
+
+permissions:
+  contents: read
+
+jobs:
+  rebuild:
+    name: Regenerate screenshots + zips
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pillow playwright
+      - run: playwright install --with-deps chromium
+      - name: Rebuild images (icons, README and store screenshots, banners)
+        run: python3 assets/build.py
+      - run: sudo apt-get update && sudo apt-get install -y zip
+      - name: Rebuild store zips
+        run: ./assets/package.sh
+      - name: Upload regenerated assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: regenerated-assets
+          path: |
+            screenshots/
+            assets/chrome-web-store/
+            assets/firefox-addons/
+            assets/icons/
+            assets/tailscale-clean-console-*.zip
+      - name: Summarize
+        run: |
+          {
+            echo "### Assets regenerated"
+            echo
+            echo "Rendered on Linux; fonts and browser text differ slightly from the"
+            echo "curated macOS captures. Review the artifact and commit locally if the"
+            echo "change is wanted."
+          } >> "$GITHUB_STEP_SUMMARY"
