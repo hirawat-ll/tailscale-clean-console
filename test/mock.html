@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Machines - mock console</title>
+<style>
+  /* Rough replica of the real console page styles that matter for testing:
+     page chrome + the .tb table rules + utility classes used on cells. */
+  :root { --text-muted: #75716e; --border: #e5e2df; }
+  @media (prefers-color-scheme: dark) {
+    :root { --text-muted: #a09b97; --border: #2e2c2b; }
+    body { background: #1f1e1e; color: #ecebea; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 32px 120px;
+    background: #f7f7f6;
+    color: #191918;
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--text-muted); margin: 0 0 20px; }
+  .toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
+  .toolbar input { flex: 0 1 420px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: inherit; }
+  .toolbar button { padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: inherit; }
+  .count { margin: 10px 0 16px; color: var(--text-muted); font-size: 12px; }
+
+  /* --- the real console's .tb component classes (copied from index CSS) --- */
+  .tb { display: block; height: auto; width: auto; }
+  .tb > * { box-sizing: border-box; }
+  .tb thead, .tb tbody { display: block; }
+  .tb thead {
+    font-weight: 600; text-transform: uppercase; letter-spacing: .05em;
+    text-align: left; font-size: .75rem; line-height: 1.3333; color: var(--text-muted);
+  }
+  .tb tr { display: flex; border-bottom: 1px solid var(--border); }
+  .tb tr > :not(template) ~ :not(template) { padding-left: .25rem; padding-right: .25rem; }
+  .tb td, .tb th { flex-shrink: 0; padding-top: .5rem; padding-bottom: .5rem; }
+  .tb tbody tr:hover { background: #ffffff; }
+  @media (prefers-color-scheme: dark) { .tb tbody tr:hover { background: #262525; } }
+
+  /* --- cell sizing utilities (the real page uses @md/@lg container queries;
+         media queries are a close enough stand-in for the mock) --- */
+  .w-0 { width: 0; }
+  .flex-auto { flex: 1 1 auto; }
+  .hidden { display: none; }
+  .tb .c-menu { display: flex; justify-content: flex-end; margin-left: auto; position: relative; }
+  @media (min-width: 720px) {
+    .tb .c-machine { flex: 0 1 auto; width: 33%; }
+    .tb .c-addr { display: block; width: 25%; }
+    .tb .c-ver { display: block; width: 25%; }
+  }
+  @media (min-width: 900px) {
+    .tb .c-ver { width: 20%; }
+    .tb .c-seen { display: block; width: 16.67%; }
+  }
+  @media (max-width: 719px) {
+    .tb .c-addr, .tb .c-ver, .tb .c-seen { display: none; }
+  }
+
+  /* --- status dot utilities (the real page uses Tailwind classes) --- */
+  .inline-block { display: inline-block; }
+  .w-2 { width: 8px; }
+  .h-2 { height: 8px; }
+  .rounded-full { border-radius: 50%; }
+  .mr-2 { margin-right: 8px; }
+  .bg-green-300 { background: #86efac; }
+  .bg-gray-300 { background: #d1d5db; }
+
+  /* --- row content --- */
+  .name { font-weight: 600; margin: 0; }
+  .name a { color: inherit; text-decoration: none; }
+  .badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .tag, .badge {
+    font-size: 11px; padding: 1px 7px; border: 1px solid var(--border);
+    border-radius: 999px; color: var(--text-muted);
+  }
+  .addr { font-variant-numeric: tabular-nums; }
+  .muted { color: var(--text-muted); font-size: 12px; }
+  .dots { border: 0; background: transparent; color: inherit; font-size: 16px; cursor: pointer; }
+
+  /* --- the trial banner (real wrapper class: .trial-expired-notice) --- */
+  .trial-expired-notice {
+    margin: 8px 0 28px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: linear-gradient(180deg, #ffffff, #efecea);
+    padding: 22px 28px;
+  }
+  @media (prefers-color-scheme: dark) { .trial-expired-notice { background: linear-gradient(180deg, #2a2928, #201f1e); } }
+  .trial-expired-notice h2 { margin: 0 0 6px; font-size: 20px; }
+  .trial-expired-notice p { margin: 0 0 10px; color: var(--text-muted); }
+  .trial-expired-notice .plans { display: flex; gap: 12px; margin-top: 14px; }
+  .trial-expired-notice .plan { border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; font-weight: 600; }
+</style>
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<!-- top banner: should be removed by the extension -->
+<div class="trial-expired-notice">
+  <div class="plan-card">
+    <h2>Your free trial has ended</h2>
+    <p>Don't worry, keep everything you've set up by choosing a plan.</p>
+    <a href="#">Compare all plans</a>
+    <div class="plans"><div class="plan">Standard</div><div class="plan">Premium</div></div>
+  </div>
+</div>
+
+<h1>Machines</h1>
+<p class="sub">Manage the devices connected to your tailnet.</p>
+
+<div class="toolbar">
+  <input placeholder="Search by name, owner, tag, version...">
+  <button>Filters</button>
+</div>
+<div class="count">6 machines</div>
+
+<table class="tb">
+  <thead>
+    <tr>
+      <th class="c-machine w-0 flex-auto">Machine</th>
+      <th class="c-addr hidden">Addresses</th>
+      <th class="c-ver hidden">Version</th>
+      <th class="c-seen hidden">Last Seen</th>
+      <th class="c-menu"><span>Machines action menu</span></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id="nodekey01">
+      <td class="c-machine w-0 flex-auto">
+        <div>
+          <div><p class="name"><a href="/admin/machines/100.87.246.105">chennai-hub</a></p></div>
+          <div class="badges"><span class="tag">tag chennai-airport</span><span class="badge">Expiry disabled</span><span class="badge">SSH</span></div>
+        </div>
+      </td>
+      <td class="c-addr hidden"><span class="addr">100.87.246.105</span></td>
+      <td class="c-ver hidden"><div><b>1.102.4</b><div class="muted">Linux 8.1.75-axon</div></div></td>
+      <td class="c-seen hidden"><span><span class="inline-block w-2 h-2 rounded-full bg-green-300 dark:bg-green-400 mr-2"></span>Connected</span></td>
+      <td class="c-menu"><button class="dots">...</button></td>
+    </tr>
+    <tr id="nodekey02">
+      <td class="c-machine w-0 flex-auto">
+        <div>
+          <div><p class="name"><a href="/admin/machines/100.111.188.57">aitharv</a></p></div>
+          <div class="badges"><span class="tag">tag pilot</span><span class="badge">Expiry disabled</span><span class="badge">SSH</span></div>
+        </div>
+      </td>
+      <td class="c-addr hidden"><span class="addr">100.111.188.57</span></td>
+      <td class="c-ver hidden"><div><b>1.102.4</b><div class="muted">Linux 8.1.75-axon</div></div></td>
+      <td class="c-seen hidden"><span><span class="inline-block w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-500 mr-2"></span>Sep 29, 4:47 PM GMT+5:30</span></td>
+      <td class="c-menu"><button class="dots">...</button></td>
+    </tr>
+    <tr id="nodekey03">
+      <td class="c-machine w-0 flex-auto">
+        <div>
+          <div><p class="name"><a href="/admin/machines/100.124.225.96">jetson001</a></p></div>
+          <div class="badges"><span class="tag">tag pilot</span><span class="badge">Expiry disabled</span><span class="badge">SSH</span></div>
+        </div>
+      </td>
+      <td class="c-addr hidden"><span class="addr">100.124.225.96</span></td>
+      <td class="c-ver hidden"><div><b>1.102.4</b><div class="muted">Linux 6.8.12-1021-tegra</div></div></td>
+      <td class="c-seen hidden"><span><span class="inline-block w-2 h-2 rounded-full bg-green-300 dark:bg-green-400 mr-2"></span>Connected</span></td>
+      <td class="c-menu"><button class="dots">...</button></td>
+    </tr>
+    <tr id="nodekey04">
+      <td class="c-machine w-0 flex-auto">
+        <div>
+          <div><p class="name"><a href="/admin/machines/100.66.89.54">sense-poco-hub</a></p></div>
+          <div class="badges"><span class="tag">tag pilot</span><span class="badge">Expiry disabled</span><span class="badge">SSH</span></div>
+        </div>
+      </td>
+      <td class="c-addr hidden"><span class="addr">100.66.89.54</span></td>
+      <td class="c-ver hidden"><div><b>1.102.4</b><div class="muted">Linux 6.1.75-axon</div></div></td>
+      <td class="c-seen hidden"><span><span class="inline-block w-2 h-2 rounded-full bg-green-300 dark:bg-green-400 mr-2"></span>Connected</span></td>
+      <td class="c-menu"><button class="dots">...</button></td>
+    </tr>
+    <tr id="nodekey05">
+      <td class="c-machine w-0 flex-auto">
+        <div>
+          <div><p class="name"><a href="/admin/machines/100.89.34.1">conf-by-nothing-phone-2-pro</a></p></div>
+          <div class="badges"><span class="tag">vishal@logicaloop.com</span><span class="badge">Expiry disabled</span></div>
+        </div>
+      </td>
+      <td class="c-addr hidden"><span class="addr">100.89.34.1</span></td>
+      <td class="c-ver hidden"><div><b>1.102.3</b><div class="muted">Android 16</div></div></td>
+      <td class="c-seen hidden"><span><span class="inline-block w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-500 mr-2"></span>6:17 PM GMT+5:30</span></td>
+      <td class="c-menu"><button class="dots">...</button></td>
+    </tr>
+    <tr id="nodekey06">
+      <td class="c-machine w-0 flex-auto">
+        <div>
+          <div><p class="name"><a href="/admin/machines/100.83.9.31">skyblue</a></p></div>
+          <div class="badges"><span class="tag">tag pilot</span><span class="badge">Expiry disabled</span><span class="badge">SSH</span></div>
+        </div>
+      </td>
+      <td class="c-addr hidden"><span class="addr">100.83.9.31</span></td>
+      <td class="c-ver hidden"><div><b>1.102.4</b><div class="muted">Linux 6.1.75-axon</div></div></td>
+      <td class="c-seen hidden"><span><span class="inline-block w-2 h-2 rounded-full bg-green-300 dark:bg-green-400 mr-2"></span>Connected</span></td>
+      <td class="c-menu"><button class="dots">...</button></td>
+    </tr>
+  </tbody>
+</table>
+
+<script src="./content.js"></script>
+</body>
+</html>

@@ -1,0 +1,263 @@
+/* ==========================================================================
+   Tailscale Clean Console
+   - Hides the "Your free trial has ended" top banner
+   - Turns the Machines table (table.tb) into a responsive card grid
+   - Styles the floating control pill
+   Verified against console.tailscale.com assets (Sep 2026):
+     banner wrapper class:  .trial-expired-notice
+     machines table:        <table class="tb"> with one <tr> per machine
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Top banner: hide the trial / billing notice
+   -------------------------------------------------------------------------- */
+.trial-expired-notice {
+  display: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   2. Machines list -> responsive card grid
+   The extension marks the right table with .tsc-machines and puts .tsc-grid
+   on <html> when grid view is active.
+   -------------------------------------------------------------------------- */
+html.tsc-grid table.tsc-machines {
+  display: block;
+  width: 100%;
+  border-collapse: separate;
+  background: transparent;
+}
+
+html.tsc-grid table.tsc-machines thead {
+  display: none !important;
+}
+
+html.tsc-grid table.tsc-machines tbody {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 12px;
+}
+
+html.tsc-grid table.tsc-machines tbody tr {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in oklab, currentColor 15%, transparent);
+  border-radius: 12px;
+  background: color-mix(in oklab, currentColor 3%, transparent);
+  text-align: left;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+html.tsc-grid table.tsc-machines tbody tr:hover {
+  border-color: color-mix(in oklab, currentColor 35%, transparent);
+  background: color-mix(in oklab, currentColor 6%, transparent);
+}
+
+/* Addresses / Version cells are removed from the cards in grid view */
+html.tsc-grid table.tsc-machines tbody td.tsc-omit {
+  display: none;
+}
+
+/* --------------------------------------------------------------------------
+   2b. Online / Offline sections
+   -------------------------------------------------------------------------- */
+table.tsc-machines tbody tr.tsc-section {
+  display: none;
+}
+
+html.tsc-grid table.tsc-machines tbody tr.tsc-section {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  margin: 0;
+  padding: 2px 2px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+html.tsc-grid table.tsc-machines tbody tr.tsc-section[hidden] {
+  display: none;
+}
+
+html.tsc-grid table.tsc-machines tbody tr.tsc-section--offline {
+  margin-top: 18px;
+}
+
+html.tsc-grid table.tsc-machines tbody tr.tsc-section td {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: auto !important;
+  padding: 0 !important;
+  border: 0;
+}
+
+/* grid placement order: online header, online cards, offline header, offline cards */
+html.tsc-grid table.tsc-machines tbody tr.tsc-section--online { order: 0; }
+html.tsc-grid table.tsc-machines tbody tr.tsc-online { order: 1; }
+html.tsc-grid table.tsc-machines tbody tr.tsc-section--offline { order: 2; }
+html.tsc-grid table.tsc-machines tbody tr.tsc-offline { order: 3; }
+
+.tsc-section-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tsc-section-title::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #b9b5b1;
+  vertical-align: 1px;
+}
+
+html.tsc-grid table.tsc-machines tbody tr.tsc-section--online .tsc-section-title::before {
+  background: #22a06b;
+}
+
+.tsc-section-count {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 8px;
+  border: 1px solid color-mix(in oklab, currentColor 22%, transparent);
+  border-radius: 999px;
+  opacity: 0.65;
+}
+
+/* "No machines match your search" row spans the whole grid */
+html.tsc-grid table.tsc-machines tbody tr.tsc-empty {
+  grid-column: 1 / -1;
+  align-items: center;
+  padding: 10px 0;
+  border: 0;
+  background: transparent;
+  text-align: center;
+}
+
+html.tsc-grid table.tsc-machines tbody td {
+  display: block;
+  box-sizing: border-box;
+  width: auto !important;
+  max-width: 100%;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0 !important;
+  border: 0;
+  text-align: left;
+  white-space: normal;
+  vertical-align: top;
+}
+
+/* small muted field label injected from the table headers */
+html.tsc-grid table.tsc-machines tbody td[data-tsc-label]::before {
+  content: attr(data-tsc-label);
+  display: inline-block;
+  vertical-align: 1px;
+  min-width: 5.75em;
+  margin-right: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  opacity: 0.5;
+  white-space: nowrap;
+}
+
+/* machine name cell = card title */
+html.tsc-grid table.tsc-machines tbody td.tsc-title {
+  padding-right: 44px !important;
+  margin-bottom: 2px;
+}
+
+/* action menu cell = card corner */
+html.tsc-grid table.tsc-machines tbody td.tsc-actions {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  width: auto !important;
+  margin: 0 !important;
+}
+
+/* "update available" pip is positioned for the table row; keep it inline in cards */
+html.tsc-grid table.tsc-machines tbody td div.absolute.-left-6 {
+  position: static;
+}
+
+/* --------------------------------------------------------------------------
+   3. Floating control pill (injected by content.js)
+   -------------------------------------------------------------------------- */
+#tsc-pill {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2147483000;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+  color: #191918;
+  font: 500 12px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* the console toggles its theme with a .dark class on <html> */
+html.dark #tsc-pill {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(38, 37, 37, 0.94);
+  color: #ecebea;
+}
+
+#tsc-pill button {
+  all: unset;
+  box-sizing: border-box;
+  padding: 6px 9px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+#tsc-pill button:hover {
+  background: rgba(0, 0, 0, 0.07);
+}
+
+html.dark #tsc-pill button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+#tsc-pill button.is-on {
+  background: #7c3aed;
+  color: #ffffff;
+}
+
+#tsc-pill button[disabled] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+#tsc-pill button[disabled]:hover {
+  background: transparent;
+}
+
+/* element-pick mode */
+html.tsc-picking,
+html.tsc-picking * {
+  cursor: crosshair !important;
+}

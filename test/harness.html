@@ -1,0 +1,111 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>harness</title>
+<style>html,body{margin:0} iframe{width:1400px;height:1700px;border:0;display:block}</style>
+</head>
+<body>
+<pre id="results" style="font:12px monospace;margin:8px">running...</pre>
+<iframe id="frame" src="/admin/machines/"></iframe>
+<script>
+/* Dev-only test harness: loads the mock Machines page in an iframe and drives
+   the extension to assert its behavior. Used with headless Chrome --dump-dom. */
+const log = [];
+const results = document.getElementById('results');
+const frame = document.getElementById('frame');
+const end = new URLSearchParams(location.search).get('end'); // 'list' | 'grid'
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+function assert(name, cond) { log.push((cond ? 'PASS' : 'FAIL') + ' ' + name); }
+
+frame.addEventListener('load', async () => {
+  const w = frame.contentWindow;
+  const d = frame.contentDocument;
+  const cs = (el) => w.getComputedStyle(el);
+
+  await wait(500);
+
+  const banner = d.querySelector('.trial-expired-notice');
+  assert('banner hidden', !!banner && cs(banner).display === 'none');
+  assert('html.tsc-grid on', d.documentElement.classList.contains('tsc-grid'));
+  assert('table marked', !!d.querySelector('table.tsc-machines'));
+  assert('title cell marked', !!d.querySelector('table.tsc-machines td.tsc-title'));
+  assert('actions cell marked', !!d.querySelector('table.tsc-machines td.tsc-actions'));
+  const labels = [...d.querySelectorAll('table.tsc-machines td[data-tsc-label]')].map((td) => td.getAttribute('data-tsc-label'));
+  assert('last-seen label kept', labels.includes('Last Seen'));
+  assert('address/version labels dropped', !labels.some((l) => /^(addresses?|ip|version)$/i.test(l)));
+  assert('pill present', !!d.querySelector('#tsc-pill'));
+
+  // online / offline sections
+  const secOn = d.querySelector('tr.tsc-section--online');
+  const secOff = d.querySelector('tr.tsc-section--offline');
+  assert('online section visible', !!secOn && cs(secOn).display !== 'none');
+  assert('offline section visible', !!secOff && cs(secOff).display !== 'none');
+  assert('section header is a left-aligned row', cs(secOn).flexDirection === 'row' && cs(secOn).justifyContent === 'flex-start');
+  const onRows = d.querySelectorAll('table.tsc-machines tbody tr.tsc-online').length;
+  const offRows = d.querySelectorAll('table.tsc-machines tbody tr.tsc-offline').length;
+  assert('online detected = 4', onRows === 4);
+  assert('offline detected = 2', offRows === 2);
+  assert('section counts correct', secOn.querySelector('.tsc-section-count').textContent === '4' && secOff.querySelector('.tsc-section-count').textContent === '2');
+  assert('order: online header 0', cs(secOn).order === '0');
+  assert('order: online cards 1', cs(d.querySelector('tr.tsc-online')).order === '1');
+  assert('order: offline header 2', cs(secOff).order === '2');
+  assert('order: offline cards 3', cs(d.querySelector('tr.tsc-offline')).order === '3');
+
+  // addresses / version removed from the cards
+  const omitted = d.querySelector('table.tsc-machines td.tsc-omit');
+  assert('address+version cells marked (12)', d.querySelectorAll('table.tsc-machines td.tsc-omit').length === 12);
+  assert('omitted cell hidden in grid', !!omitted && cs(omitted).display === 'none');
+
+  d.querySelector('#tsc-pill [data-act="view"]').click();
+  await wait(300);
+  assert('toggle -> list: no tsc-grid', !d.documentElement.classList.contains('tsc-grid'));
+  assert('toggle -> list: thead visible', cs(d.querySelector('table.tsc-machines thead')).display !== 'none');
+  assert('toggle -> list: sections hidden', cs(secOn).display === 'none');
+  assert('toggle -> list: omitted cells visible', cs(omitted).display !== 'none');
+
+  d.querySelector('#tsc-pill [data-act="view"]').click();
+  await wait(300);
+  assert('toggle -> grid restored', d.documentElement.classList.contains('tsc-grid'));
+
+  const target = d.querySelector('.count');
+  assert('picker target exists', !!target);
+  d.querySelector('#tsc-pill [data-act="pick"]').click();
+  const r = target.getBoundingClientRect();
+  const opts = { bubbles: true, cancelable: true, clientX: r.left + 3, clientY: r.top + 3 };
+  target.dispatchEvent(new w.MouseEvent('mousemove', opts));
+  await wait(50);
+  target.dispatchEvent(new w.MouseEvent('click', opts));
+  await wait(300);
+  assert('picker hid the element', cs(target).display === 'none');
+  const saved = JSON.parse(w.localStorage.getItem('tsc:settings:v1') || '{}');
+  assert('picker saved one selector', Array.isArray(saved.hidden) && saved.hidden.length === 1);
+
+  d.querySelector('#tsc-pill [data-act="reset"]').click();
+  await wait(300);
+  assert('reset restored the element', cs(target).display !== 'none');
+
+  w.history.pushState({}, '', '/admin/machines/some-detail');
+  w.dispatchEvent(new w.PopStateEvent('popstate'));
+  await wait(400);
+  assert('off machines: pill removed', !d.querySelector('#tsc-pill'));
+  assert('off machines: grid off', !d.documentElement.classList.contains('tsc-grid'));
+
+  w.history.pushState({}, '', '/admin/machines/');
+  w.dispatchEvent(new w.PopStateEvent('popstate'));
+  await wait(400);
+  assert('back on machines: pill restored', !!d.querySelector('#tsc-pill'));
+  assert('back on machines: grid on', d.documentElement.classList.contains('tsc-grid'));
+
+  if (end === 'list') {
+    d.querySelector('#tsc-pill [data-act="view"]').click();
+    await wait(300);
+  }
+
+  const failed = log.filter((l) => l.startsWith('FAIL')).length;
+  results.textContent = log.join('\n') + '\n' + (failed ? failed + ' FAILURES' : 'ALL PASS');
+  document.title = failed ? 'FAIL' : 'PASS';
+});
+</script>
+</body>
+</html>
