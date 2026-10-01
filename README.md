@@ -52,5 +52,7 @@ assets/   store zips, icons, banners and listing copy for both stores
 Run the tests with `node test/serve.mjs`, then open
 <http://localhost:8787/test/harness.html>.
 
+See [ROADMAP.md](ROADMAP.md) for planned improvements.
+
 Unofficial project, not affiliated with Tailscale Inc. See
 [PRIVACY.md](PRIVACY.md).
