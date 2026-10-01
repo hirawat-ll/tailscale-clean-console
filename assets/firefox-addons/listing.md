@@ -72,8 +72,12 @@ trial-banner hiding, and an element picker to hide anything.
 
 ## Data collection (AMO form)
 
-Select **This add-on does not collect or transmit any data** and mark all data
-categories as not collected/transmitted.
+Declared in `firefox/manifest.json` under
+`browser_specific_settings.gecko.data_collection_permissions` as
+`{ "required": ["none"] }` — the add-on collects and transmits nothing, so the
+built-in consent screen shows no data types. In the form, select **This add-on
+does not collect or transmit any data** and mark all categories as not
+collected/transmitted.
 
 ## Permissions requested
 
@@ -88,6 +92,7 @@ categories as not collected/transmitted.
 | Icon (128×128) | ships in the package (`firefox/icons/`) |
 | Screenshot 1 — card grid | `screenshots/1-grid-view-1280x800.png` |
 | Screenshot 2 — classic view | `screenshots/2-classic-view-1280x800.png` |
+| Screenshot 3 — dark mode | `screenshots/3-dark-mode-1280x800.png` |
 
 ## Upload package
 

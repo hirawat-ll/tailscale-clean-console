@@ -93,6 +93,7 @@ creditworthiness).
 | Store icon (128×128) | `../icons/icon-1024.png` (downscaled automatically) |
 | Screenshot 1 — card grid | `screenshots/1-grid-view-1280x800.png` |
 | Screenshot 2 — classic view | `screenshots/2-classic-view-1280x800.png` |
+| Screenshot 3 — dark mode | `screenshots/3-dark-mode-1280x800.png` |
 | Small promo tile (440×280) | `promo/small-tile-440x280.png` |
 | Large promo tile (920×680) | `promo/large-tile-920x680.png` |
 | Marquee (1400×560) | `promo/marquee-1400x560.png` |

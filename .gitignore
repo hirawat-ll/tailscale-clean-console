@@ -3,3 +3,5 @@ web-ext-artifacts/
 *.xpi
 .DS_Store
 .openchamber/
+.captures/
+__pycache__/

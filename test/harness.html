@@ -44,9 +44,9 @@ frame.addEventListener('load', async () => {
   assert('section header is a left-aligned row', cs(secOn).flexDirection === 'row' && cs(secOn).justifyContent === 'flex-start');
   const onRows = d.querySelectorAll('table.tsc-machines tbody tr.tsc-online').length;
   const offRows = d.querySelectorAll('table.tsc-machines tbody tr.tsc-offline').length;
-  assert('online detected = 4', onRows === 4);
-  assert('offline detected = 2', offRows === 2);
-  assert('section counts correct', secOn.querySelector('.tsc-section-count').textContent === '4' && secOff.querySelector('.tsc-section-count').textContent === '2');
+  assert('online detected = 5', onRows === 5);
+  assert('offline detected = 3', offRows === 3);
+  assert('section counts correct', secOn.querySelector('.tsc-section-count').textContent === '5' && secOff.querySelector('.tsc-section-count').textContent === '3');
   assert('order: online header 0', cs(secOn).order === '0');
   assert('order: online cards 1', cs(d.querySelector('tr.tsc-online')).order === '1');
   assert('order: offline header 2', cs(secOff).order === '2');
@@ -54,7 +54,7 @@ frame.addEventListener('load', async () => {
 
   // addresses / version removed from the cards
   const omitted = d.querySelector('table.tsc-machines td.tsc-omit');
-  assert('address+version cells marked (12)', d.querySelectorAll('table.tsc-machines td.tsc-omit').length === 12);
+  assert('address+version cells marked (16)', d.querySelectorAll('table.tsc-machines td.tsc-omit').length === 16);
   assert('omitted cell hidden in grid', !!omitted && cs(omitted).display === 'none');
 
   d.querySelector('#tsc-pill [data-act="view"]').click();

@@ -9,7 +9,7 @@ A tiny browser extension that cleans up the Tailscale admin console
 
 | Before | After |
 | --- | --- |
-| ![before](screenshots/before.jpg) | ![after](screenshots/after.jpg) |
+| ![before](screenshots/before.png) | ![after](screenshots/after.png) |
 
 ## Install
 
