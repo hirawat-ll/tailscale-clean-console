@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Tailscale Clean Console",
+  "version": "1.0.0",
+  "description": "Hides the trial/billing banner and shows the Tailscale admin Machines page as a clean card grid.",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://console.tailscale.com/admin/*",
+        "https://login.tailscale.com/admin/*"
+      ],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
