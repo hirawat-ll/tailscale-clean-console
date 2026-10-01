@@ -81,9 +81,29 @@ frame.addEventListener('load', async () => {
   const saved = JSON.parse(w.localStorage.getItem('tsc:settings:v1') || '{}');
   assert('picker saved one selector', Array.isArray(saved.hidden) && saved.hidden.length === 1);
 
+  // hiding a device drops it from the Online / Offline totals
+  const countOf = (sel) => d.querySelector(sel + ' .tsc-section-count').textContent;
+  const firstOnline = d.querySelector('tr.tsc-online');
+  const devLink = firstOnline.querySelector('.name a') || firstOnline.querySelector('a');
+  assert('device target exists', !!devLink);
+  d.querySelector('#tsc-pill [data-act="pick"]').click();
+  const dr = devLink.getBoundingClientRect();
+  const dopts = { bubbles: true, cancelable: true, clientX: dr.left + 2, clientY: dr.top + 2 };
+  devLink.dispatchEvent(new w.MouseEvent('mousemove', dopts));
+  await wait(50);
+  devLink.dispatchEvent(new w.MouseEvent('click', dopts));
+  await wait(300);
+  assert('hidden device card gone', cs(firstOnline).display === 'none');
+  assert('hidden device dropped from online total', countOf('tr.tsc-section--online') === '4');
+  assert('hidden device left offline total alone', countOf('tr.tsc-section--offline') === '3');
+  const savedDev = JSON.parse(w.localStorage.getItem('tsc:settings:v1') || '{}');
+  assert('hidden device saved automatically', Array.isArray(savedDev.hiddenDevices) && savedDev.hiddenDevices.length === 1);
+
   d.querySelector('#tsc-pill [data-act="reset"]').click();
   await wait(300);
   assert('reset restored the element', cs(target).display !== 'none');
+  assert('reset restored the hidden device', cs(firstOnline).display !== 'none');
+  assert('reset restored online total', countOf('tr.tsc-section--online') === '5');
 
   w.history.pushState({}, '', '/admin/machines/some-detail');
   w.dispatchEvent(new w.PopStateEvent('popstate'));

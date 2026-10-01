@@ -28,11 +28,17 @@ A pill sits in the bottom-right of the Machines page:
 | Button | Action |
 | --- | --- |
 | ▦ Grid / ☰ List | toggle card grid ↔ classic table |
-| ⌖ Hide | click an element to hide it (Esc cancels) |
+| ⌖ Hide | click an element to hide it; click a device to hide that device (Esc cancels) |
 | ↺ | show everything you hid |
 
-The layout and hidden elements are remembered per-site in `localStorage`
-(`tsc:settings:v1`).
+Hiding a device removes its card and drops it from the **Online / Offline**
+totals (the count reflects only the devices still shown). The reset button
+brings every hidden device and element back.
+
+The layout, hidden elements and hidden devices are remembered per-site, and
+saved automatically on every change in `localStorage` under `tsc:settings:v1`
+(`hidden` for picked elements, `hiddenDevices` for whole devices). Nothing else
+is stored or sent anywhere — see [PRIVACY.md](PRIVACY.md).
 
 ## Layout
 

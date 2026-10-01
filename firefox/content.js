@@ -17,7 +17,7 @@
 
   const STORE_KEY = "tsc:settings:v1";
   const MACHINES_PATH = /^\/admin\/machines\/?$/;
-  const DEFAULT_SETTINGS = Object.freeze({ view: "grid", hidden: [] });
+  const DEFAULT_SETTINGS = Object.freeze({ view: "grid", hidden: [], hiddenDevices: [] });
 
   /* ---------------------------------------------------------------- state */
 
@@ -29,9 +29,12 @@
       return {
         view: raw.view === "list" ? "list" : "grid",
         hidden: Array.isArray(raw.hidden) ? raw.hidden.filter((s) => typeof s === "string") : [],
+        hiddenDevices: Array.isArray(raw.hiddenDevices)
+          ? raw.hiddenDevices.filter((s) => typeof s === "string")
+          : [],
       };
     } catch (err) {
-      return { ...DEFAULT_SETTINGS, hidden: [] };
+      return { ...DEFAULT_SETTINGS, hidden: [], hiddenDevices: [] };
     }
   }
 
@@ -89,6 +92,38 @@
   const OMIT_COLUMN = /^(addresses?|ip|version)$/i;
   const LAST_SEEN_COLUMN = /^last\s*seen$/i;
 
+  /* A device row is a real machine row in the machines table - not a section
+     header we injected, not the empty-search placeholder. */
+  function deviceRowFor(el) {
+    const row = el && el.closest ? el.closest("tr") : null;
+    if (!row) return null;
+    const table = row.closest("table");
+    if (!table || table !== findMachinesTable()) return null;
+    if (row.classList.contains("tsc-section") || row.classList.contains("tsc-empty")) return null;
+    const cells = Array.from(row.children).filter((c) => c.tagName === "TD");
+    return cells.length >= 2 ? row : null;
+  }
+
+  /* A stable key so a hidden device stays hidden across reloads: the node key
+     from the row id when there is one, otherwise the machine name. */
+  function deviceKey(row) {
+    if (row.id) return "id:" + row.id;
+    const link = row.querySelector("td a[href]");
+    const name = (link ? link.textContent : "").trim().slice(0, 200);
+    return name ? "name:" + name : null;
+  }
+
+  /* Hide the devices the user removed; they are skipped by the count below. */
+  function applyHiddenDevices(table) {
+    for (const row of table.querySelectorAll("tbody tr")) {
+      if (row.classList.contains("tsc-section")) continue;
+      const cells = Array.from(row.children).filter((c) => c.tagName === "TD");
+      if (cells.length < 2) continue;
+      const key = deviceKey(row);
+      row.classList.toggle("tsc-device-hidden", !!key && settings.hiddenDevices.includes(key));
+    }
+  }
+
   function markTable() {
     const table = findMachinesTable();
     if (!table) return;
@@ -111,6 +146,9 @@
         if (!row.classList.contains("tsc-empty")) row.classList.add("tsc-empty");
         continue;
       }
+
+      /* the user hid this device: keep it out of the online/offline totals */
+      if (row.classList.contains("tsc-device-hidden")) continue;
 
       cells.forEach((td, i) => {
         const isFirst = i === 0;
@@ -216,7 +254,7 @@
     pill.setAttribute("aria-label", "Tailscale Clean Console");
     pill.innerHTML =
       '<button type="button" data-act="view"></button>' +
-      '<button type="button" data-act="pick" title="Hide an element: click this, then click the element to remove"></button>' +
+      '<button type="button" data-act="pick" title="Hide: click this, then click an element (or a device card) to remove it"></button>' +
       '<button type="button" data-act="reset" title="Show everything you have hidden"></button>';
     pill.addEventListener("click", onPillClick, true);
     (document.body || document.documentElement).appendChild(pill);
@@ -248,8 +286,9 @@
         break;
       case "reset":
         settings.hidden = [];
+        settings.hiddenDevices = [];
         saveSettings();
-        applyHidden();
+        sweep();
         break;
     }
     renderPill();
@@ -269,12 +308,13 @@
 
     pick.textContent = pickArmed ? "\u2316 pick..." : "\u2316 Hide";
     pick.classList.toggle("is-on", pickArmed);
-    pick.title = pickArmed ? "Click an element to hide it (Esc to cancel)" : "Hide an element on the page";
+    pick.title = pickArmed ? "Click an element or device to hide it (Esc to cancel)" : "Hide an element or a device on the page";
 
     reset.textContent = "\u21BA";
-    reset.disabled = settings.hidden.length === 0;
-    reset.title = settings.hidden.length
-      ? `Show ${settings.hidden.length} hidden element(s) again`
+    const hiddenCount = settings.hidden.length + settings.hiddenDevices.length;
+    reset.disabled = hiddenCount === 0;
+    reset.title = hiddenCount
+      ? `Show ${hiddenCount} hidden item(s) again`
       : "Nothing hidden";
   }
 
@@ -327,6 +367,22 @@
     event.stopPropagation();
 
     const el = document.elementFromPoint(event.clientX, event.clientY) || event.target;
+
+    /* clicking a device (anywhere on its card) hides the whole device, so it
+       also drops out of the online/offline totals */
+    const device = deviceRowFor(el);
+    if (device) {
+      const key = deviceKey(device);
+      if (key && !settings.hiddenDevices.includes(key)) {
+        settings.hiddenDevices.push(key);
+        saveSettings();
+      }
+      console.info("[tailscale-clean] hid device", device, "with key:", key);
+      setPick(false);
+      sweep();
+      return;
+    }
+
     const selector = selectorFor(el);
     if (selector && !settings.hidden.includes(selector)) {
       settings.hidden.push(selector);
@@ -392,6 +448,9 @@
 
   function sweep() {
     applyHidden();
+
+    const table = onMachinesPage() ? findMachinesTable() : null;
+    if (table) applyHiddenDevices(table);
 
     const grid = applyGrid();
     if (onMachinesPage()) {

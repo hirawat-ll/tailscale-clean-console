@@ -70,6 +70,12 @@ table.tsc-machines tbody tr.tsc-section {
   display: none;
 }
 
+/* a device the user hid from the grid: gone in both views, and left out of
+   the Online / Offline totals */
+table.tsc-machines tbody tr.tsc-device-hidden {
+  display: none !important;
+}
+
 html.tsc-grid table.tsc-machines tbody tr.tsc-section {
   grid-column: 1 / -1;
   display: flex;
