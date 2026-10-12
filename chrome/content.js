@@ -10,16 +10,21 @@
  *       Hide         - pick any element on the page and hide it (remembered)
  *       Reset        - unhide everything you hid
  *       Settings     - a popover to view/restore hidden items, choose the
- *                      default view, export / import and opt into sync
+ *                      default view / language, export / import and sync
+ *  4. Toasts and an undo history: every hide says what it hid and offers
+ *     "Undo" (also Cmd/Ctrl+Z); reset is confirmed too.
+ *  5. Keyboard shortcuts (g grid/list, h hide, r reset, p show/hide the pill,
+ *     Esc cancel) and a keyboard-operable element picker.
  *
  * All settings live in localStorage under "tsc:settings:v1" (optionally
- * mirrored to browser.storage.sync when the user turns sync on).
+ * mirrored to browser.storage.sync when the user turns sync on). UI strings
+ * go through t() so the locale can be switched in settings.
  */
 (() => {
   "use strict";
 
   const STORE_KEY = "tsc:settings:v1";
-  const SCHEMA_VERSION = 2;
+  const SCHEMA_VERSION = 3;
   const MACHINES_PATH = /^\/admin\/machines\/?$/;
   const DEFAULT_SETTINGS = Object.freeze({
     schema: SCHEMA_VERSION,
@@ -29,7 +34,166 @@
     sync: false,
     onboarded: false,
     hintShown: false,
+    locale: "en",
+    pillHidden: false,
   });
+
+  /* --------------------------------------------------------------- i18n */
+
+  /* Every user-facing string lives here (see t()). Adding a locale is one
+     more key; any missing string falls back to English. The scaffold ships
+     English plus one non-English locale (Spanish). */
+  const MESSAGES = {
+    en: {
+      "pill.label": "Tailscale Clean Console",
+      "pill.viewGrid": "Grid",
+      "pill.viewList": "List",
+      "pill.viewToggle": "Toggle grid or list view",
+      "pill.viewTitleGrid": "Showing grid view - click for the classic list",
+      "pill.viewTitleList": "Showing list view - click for the grid",
+      "pill.pick": "Hide",
+      "pill.pickArmed": "pick...",
+      "pill.pickToggle": "Pick an element or device to hide",
+      "pill.pickTitle": "Hide: click this, then click an element (or a device card) to remove it",
+      "pill.pickArmedTitle": "Click an element or device to hide it (Esc to cancel)",
+      "pill.reset": "Reset",
+      "pill.resetAria": "Show everything you have hidden",
+      "pill.resetCount": "Show {count} hidden item(s) again",
+      "pill.resetNone": "Nothing hidden",
+      "pill.settings": "Settings",
+      "pill.help": "How this works",
+      "help.title": "Tailscale Clean Console",
+      "help.aria": "Tailscale Clean Console help",
+      "help.line.view": "switch between cards and the classic table",
+      "help.line.pick": "click an element, or a device card, to hide it",
+      "help.line.reset": "bring back everything you hid",
+      "help.line.settings": "restore hidden items, choose the view, export / import",
+      "help.tour": "10-second tour",
+      "help.dismiss": "Got it",
+      "hint.device": "Click a device card to hide the whole device.",
+      "tour.aria": "Quick tour",
+      "tour.view": "Grid or List - switch the layout whenever you like.",
+      "tour.sections": "Online and Offline split the machines, with live counts that follow what you hide.",
+      "tour.skip": "Skip",
+      "tour.next": "Next",
+      "tour.done": "Done",
+      "tour.progress": "{index} / {total}",
+      "section.online": "Online",
+      "section.offline": "Offline",
+      "settings.title": "Settings",
+      "settings.aria": "Tailscale Clean Console settings",
+      "settings.close": "Close settings",
+      "settings.defaultView": "Default view",
+      "settings.language": "Language",
+      "settings.sync": "Sync settings across devices",
+      "settings.syncUnavailable": "not available in this browser",
+      "settings.export": "Export JSON",
+      "settings.import": "Import JSON",
+      "settings.hiddenDevices": "Hidden devices",
+      "settings.hiddenElements": "Hidden elements",
+      "settings.showAll": "Show all",
+      "settings.showAllDevices": "Show hidden devices",
+      "settings.showAllElements": "Show hidden elements",
+      "settings.show": "Show",
+      "settings.showItem": "Show {name}",
+      "settings.version": "settings v{version}",
+      "settings.hidePill": "Hide the pill",
+      "settings.hidePillTitle": "Hide the floating controls; press P to bring them back",
+      "toast.undo": "Undo",
+      "toast.hiddenDevice": "Hidden {name}",
+      "toast.hiddenElement": "Hidden {name}",
+      "toast.hiddenElementGeneric": "Hidden element",
+      "toast.restored": "Showed everything you hid",
+      "toast.undone": "Undone",
+      "toast.nothingHidden": "Nothing hidden",
+      "toast.pillHidden": "Pill hidden - press P to bring it back",
+      "toast.pillShown": "Pill shown",
+    },
+    es: {
+      "pill.label": "Tailscale Clean Console",
+      "pill.viewGrid": "Cuadrícula",
+      "pill.viewList": "Lista",
+      "pill.viewToggle": "Cambiar entre cuadrícula y lista",
+      "pill.viewTitleGrid": "Vista de cuadrícula: haz clic para la lista clásica",
+      "pill.viewTitleList": "Vista de lista: haz clic para la cuadrícula",
+      "pill.pick": "Ocultar",
+      "pill.pickArmed": "elige...",
+      "pill.pickToggle": "Elegir un elemento o dispositivo para ocultar",
+      "pill.pickTitle": "Ocultar: haz clic aquí y luego en un elemento (o una tarjeta de dispositivo) para quitarlo",
+      "pill.pickArmedTitle": "Haz clic en un elemento o dispositivo para ocultarlo (Esc para cancelar)",
+      "pill.reset": "Restablecer",
+      "pill.resetAria": "Mostrar todo lo que has ocultado",
+      "pill.resetCount": "Mostrar {count} elemento(s) oculto(s) de nuevo",
+      "pill.resetNone": "Nada oculto",
+      "pill.settings": "Ajustes",
+      "pill.help": "Cómo funciona",
+      "help.title": "Tailscale Clean Console",
+      "help.aria": "Ayuda de Tailscale Clean Console",
+      "help.line.view": "cambia entre tarjetas y la tabla clásica",
+      "help.line.pick": "haz clic en un elemento, o en una tarjeta de dispositivo, para ocultarlo",
+      "help.line.reset": "recupera todo lo que ocultaste",
+      "help.line.settings": "restaura elementos ocultos, elige la vista, exporta / importa",
+      "help.tour": "Tour de 10 segundos",
+      "help.dismiss": "Entendido",
+      "hint.device": "Haz clic en una tarjeta de dispositivo para ocultar todo el dispositivo.",
+      "tour.aria": "Tour rápido",
+      "tour.view": "Cuadrícula o Lista: cambia el diseño cuando quieras.",
+      "tour.sections": "En línea y Desconectados separan las máquinas, con recuentos en vivo que siguen lo que ocultas.",
+      "tour.skip": "Saltar",
+      "tour.next": "Siguiente",
+      "tour.done": "Listo",
+      "tour.progress": "{index} / {total}",
+      "section.online": "En línea",
+      "section.offline": "Desconectados",
+      "settings.title": "Ajustes",
+      "settings.aria": "Ajustes de Tailscale Clean Console",
+      "settings.close": "Cerrar ajustes",
+      "settings.defaultView": "Vista predeterminada",
+      "settings.language": "Idioma",
+      "settings.sync": "Sincronizar ajustes entre dispositivos",
+      "settings.syncUnavailable": "no disponible en este navegador",
+      "settings.export": "Exportar JSON",
+      "settings.import": "Importar JSON",
+      "settings.hiddenDevices": "Dispositivos ocultos",
+      "settings.hiddenElements": "Elementos ocultos",
+      "settings.showAll": "Mostrar todo",
+      "settings.showAllDevices": "Mostrar dispositivos ocultos",
+      "settings.showAllElements": "Mostrar elementos ocultos",
+      "settings.show": "Mostrar",
+      "settings.showItem": "Mostrar {name}",
+      "settings.version": "ajustes v{version}",
+      "settings.hidePill": "Ocultar la píldora",
+      "settings.hidePillTitle": "Oculta los controles flotantes; pulsa P para recuperarlos",
+      "toast.undo": "Deshacer",
+      "toast.hiddenDevice": "Ocultado {name}",
+      "toast.hiddenElement": "Ocultado {name}",
+      "toast.hiddenElementGeneric": "Elemento oculto",
+      "toast.restored": "Se mostró todo lo que ocultaste",
+      "toast.undone": "Deshecho",
+      "toast.nothingHidden": "Nada oculto",
+      "toast.pillHidden": "Píldora oculta: pulsa P para recuperarla",
+      "toast.pillShown": "Píldora visible",
+    },
+  };
+
+  const LOCALES = [
+    { code: "en", label: "English" },
+    { code: "es", label: "Español" },
+  ];
+
+  /* Look up a string for the current locale, with {name} placeholders. */
+  function t(key, vars) {
+    const dict = (settings && MESSAGES[settings.locale]) || MESSAGES.en;
+    let text = dict[key];
+    if (text == null) text = MESSAGES.en[key];
+    if (text == null) text = key;
+    if (vars) {
+      text = text.replace(/\{(\w+)\}/g, (match, name) =>
+        Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : match
+      );
+    }
+    return text;
+  }
 
   /* ---------------------------------------------------------------- state */
 
@@ -50,6 +214,8 @@
       sync: source.sync === true,
       onboarded: source.onboarded === true,
       hintShown: source.hintShown === true,
+      locale: typeof source.locale === "string" && MESSAGES[source.locale] ? source.locale : "en",
+      pillHidden: source.pillHidden === true,
     };
   }
 
@@ -329,11 +495,12 @@
   function makeSectionRow(kind) {
     const row = document.createElement("tr");
     row.className = "tsc-section tsc-section--" + kind;
+    row.dataset.tscKind = kind;
 
     const cell = document.createElement("td");
     const title = document.createElement("span");
     title.className = "tsc-section-title";
-    title.textContent = kind === "online" ? "Online" : "Offline";
+    title.textContent = sectionTitle(kind);
 
     const count = document.createElement("span");
     count.className = "tsc-section-count";
@@ -344,7 +511,16 @@
     return row;
   }
 
+  function sectionTitle(kind) {
+    return t(kind === "online" ? "section.online" : "section.offline");
+  }
+
   function updateSection(row, count) {
+    const kind = row.dataset.tscKind || (row.classList.contains("tsc-section--online") ? "online" : "offline");
+    const title = row.querySelector(".tsc-section-title");
+    const wanted = sectionTitle(kind);
+    if (title && title.textContent !== wanted) title.textContent = wanted;
+
     const badge = row.querySelector(".tsc-section-count");
     const text = String(count);
     if (badge && badge.textContent !== text) badge.textContent = text;
@@ -356,6 +532,129 @@
     const grid = onMachinesPage() && settings.view === "grid";
     document.documentElement.classList.toggle("tsc-grid", grid);
     return grid;
+  }
+
+  /* --------------------------------------------------------- undo + toast */
+
+  /* Recent hides, newest last, so Cmd/Ctrl+Z (or the toast's Undo) can put
+     one back. Bounded so a long session does not grow forever. */
+  const undoStack = [];
+  const UNDO_LIMIT = 20;
+
+  function pushUndo(entry) {
+    undoStack.push(entry);
+    if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+  }
+
+  function undoTarget(entry) {
+    if (entry.kind === "device") {
+      settings.hiddenDevices = settings.hiddenDevices.filter((key) => key !== entry.key);
+    } else {
+      settings.hidden = settings.hidden.filter((sel) => sel !== entry.selector);
+    }
+  }
+
+  function undoLast() {
+    const entry = undoStack.pop();
+    if (!entry) return;
+    undoTarget(entry);
+    saveSettings();
+    sweep();
+    if (settingsOpen) renderSettings();
+    showToast(t("toast.undone"));
+  }
+
+  let toastEl = null;
+  let toastTimer = null;
+
+  function ensureToast() {
+    if (toastEl && toastEl.isConnected) return toastEl;
+    toastEl = document.createElement("div");
+    toastEl.id = "tsc-toast";
+    toastEl.setAttribute("role", "status");
+    toastEl.setAttribute("aria-live", "polite");
+    (document.body || document.documentElement).appendChild(toastEl);
+    return toastEl;
+  }
+
+  /* A short confirmation under the page. `opts.undo` adds an Undo button and
+     gives the user longer to reach it. */
+  function showToast(message, opts) {
+    const el = ensureToast();
+    el.textContent = "";
+
+    const text = document.createElement("span");
+    text.className = "tsc-toast-text";
+    text.textContent = message;
+    el.appendChild(text);
+
+    if (opts && opts.undo) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "tsc-toast-undo";
+      button.textContent = t("toast.undo");
+      button.addEventListener("click", undoLast, { once: true });
+      el.appendChild(button);
+    }
+
+    el.classList.add("is-on");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(removeToast, opts && opts.undo ? 6000 : 3000);
+  }
+
+  function removeToast() {
+    clearTimeout(toastTimer);
+    toastTimer = null;
+    if (toastEl) toastEl.classList.remove("is-on");
+  }
+
+  /* ------------------------------------------------------- hide actions */
+
+  /* Name a device for the toast/undo label, falling back to its key. */
+  function deviceDisplayName(row) {
+    const key = deviceKey(row);
+    if (key) {
+      const name = deviceNameFor(key);
+      if (name) return name;
+    }
+    const link = row.querySelector("td a[href]");
+    const text = ((link ? link.textContent : row.textContent) || "").trim().replace(/\s+/g, " ");
+    return text.split("\n")[0].slice(0, 60) || "device";
+  }
+
+  /* A short, human label for a hidden element: its aria-label or text, else
+     its tag name. */
+  function elementLabel(el) {
+    if (!el) return "";
+    const text = ((el.getAttribute("aria-label") || el.textContent || "") + "").trim().replace(/\s+/g, " ").slice(0, 48);
+    return text || el.localName || t("toast.hiddenElementGeneric");
+  }
+
+  function hideDevice(row) {
+    const key = deviceKey(row);
+    if (!key || settings.hiddenDevices.includes(key)) return false;
+    const name = deviceDisplayName(row);
+    settings.hiddenDevices.push(key);
+    saveSettings();
+    pushUndo({ kind: "device", key, name });
+    sweep();
+    showToast(t("toast.hiddenDevice", { name }), { undo: true });
+    console.info("[tailscale-clean] hid device", row, "with key:", key);
+    return true;
+  }
+
+  function hideElement(el) {
+    if (!el || el === document.body || el === document.documentElement || isTscUi(el)) return false;
+    const selector = selectorFor(el);
+    if (!selector || settings.hidden.includes(selector)) return false;
+    const name = elementLabel(el);
+    settings.hidden.push(selector);
+    saveSettings();
+    applyHidden();
+    pushUndo({ kind: "element", selector, name });
+    showToast(t("toast.hiddenElement", { name }), { undo: true });
+    console.info("[tailscale-clean] hidden element", el, "with selector:", selector);
+    return true;
   }
 
   /* ------------------------------------------------------------ tiny pill */
@@ -379,13 +678,12 @@
     pill = document.createElement("div");
     pill.id = "tsc-pill";
     pill.setAttribute("role", "toolbar");
-    pill.setAttribute("aria-label", "Tailscale Clean Console");
     pill.innerHTML =
       '<button type="button" data-act="view"></button>' +
-      '<button type="button" data-act="pick" title="Hide: click this, then click an element (or a device card) to remove it"></button>' +
-      '<button type="button" data-act="reset" title="Show everything you have hidden"></button>' +
-      '<button type="button" data-act="gear" title="Settings" aria-label="Settings">\u2699</button>' +
-      '<button type="button" data-act="help" title="How this works" aria-label="Help">?</button>';
+      '<button type="button" data-act="pick" aria-pressed="false"></button>' +
+      '<button type="button" data-act="reset"></button>' +
+      '<button type="button" data-act="gear">\u2699</button>' +
+      '<button type="button" data-act="help">?</button>';
     pill.addEventListener("click", onPillClick, true);
     (document.body || document.documentElement).appendChild(pill);
     renderPill();
@@ -398,6 +696,42 @@
     }
     if (pickArmed) setPick(false);
     closeSettings();
+    removeToast();
+  }
+
+  /* Run a pill action, whichever way it was triggered (click or shortcut). */
+  function toggleView() {
+    settings.view = settings.view === "grid" ? "list" : "grid";
+    saveSettings();
+    sweep();
+    if (settingsOpen) renderSettings();
+    renderPill();
+  }
+
+  function resetHidden() {
+    const hiddenCount = settings.hidden.length + settings.hiddenDevices.length;
+    if (hiddenCount === 0) {
+      showToast(t("toast.nothingHidden"));
+      return;
+    }
+    settings.hidden = [];
+    settings.hiddenDevices = [];
+    undoStack.length = 0;
+    saveSettings();
+    sweep();
+    if (settingsOpen) renderSettings();
+    showToast(t("toast.restored"));
+  }
+
+  /* Hide the pill for power users; the `p` shortcut brings it back. */
+  function setPillHidden(hidden) {
+    const next = hidden === true;
+    if (settings.pillHidden === next) return;
+    settings.pillHidden = next;
+    saveSettings();
+    renderPill();
+    if (settingsOpen) renderSettings();
+    showToast(t(next ? "toast.pillHidden" : "toast.pillShown"));
   }
 
   function onPillClick(event) {
@@ -408,20 +742,13 @@
 
     switch (button.dataset.act) {
       case "view":
-        settings.view = settings.view === "grid" ? "list" : "grid";
-        saveSettings();
-        sweep();
-        if (settingsOpen) renderSettings();
+        toggleView();
         break;
       case "pick":
         setPick(!pickArmed);
         break;
       case "reset":
-        settings.hidden = [];
-        settings.hiddenDevices = [];
-        saveSettings();
-        sweep();
-        if (settingsOpen) renderSettings();
+        resetHidden();
         break;
       case "gear":
         toggleSettings();
@@ -437,40 +764,54 @@
 
   function renderPill() {
     if (!pill) return;
+    pill.hidden = settings.pillHidden === true;
+    pill.setAttribute("aria-label", t("pill.label"));
+
     const view = pill.querySelector('[data-act="view"]');
     const pick = pill.querySelector('[data-act="pick"]');
     const reset = pill.querySelector('[data-act="reset"]');
     const gear = pill.querySelector('[data-act="gear"]');
+    const helpBtn = pill.querySelector('[data-act="help"]');
 
-    view.textContent = settings.view === "grid" ? "\u25A6 Grid" : "\u2630 List";
-    view.title =
-      settings.view === "grid"
-        ? "Showing grid view - click for the classic list"
-        : "Showing list view - click for the grid";
+    view.textContent = settings.view === "grid" ? "\u25A6 " + t("pill.viewGrid") : "\u2630 " + t("pill.viewList");
+    view.title = settings.view === "grid" ? t("pill.viewTitleGrid") : t("pill.viewTitleList");
+    view.setAttribute("aria-label", t("pill.viewToggle"));
+    view.setAttribute("aria-pressed", String(settings.view === "grid"));
 
-    pick.textContent = pickArmed ? "\u2316 pick..." : "\u2316 Hide";
+    pick.textContent = pickArmed ? "\u2316 " + t("pill.pickArmed") : "\u2316 " + t("pill.pick");
     pick.classList.toggle("is-on", pickArmed);
-    pick.title = pickArmed ? "Click an element or device to hide it (Esc to cancel)" : "Hide an element or a device on the page";
+    pick.title = pickArmed ? t("pill.pickArmedTitle") : t("pill.pickTitle");
+    pick.setAttribute("aria-label", t("pill.pickToggle"));
+    pick.setAttribute("aria-pressed", String(pickArmed));
 
     reset.textContent = "\u21BA";
     const hiddenCount = settings.hidden.length + settings.hiddenDevices.length;
     reset.disabled = hiddenCount === 0;
-    reset.title = hiddenCount
-      ? `Show ${hiddenCount} hidden item(s) again`
-      : "Nothing hidden";
+    reset.title = hiddenCount ? t("pill.resetCount", { count: hiddenCount }) : t("pill.resetNone");
+    reset.setAttribute("aria-label", hiddenCount ? t("pill.resetCount", { count: hiddenCount }) : t("pill.resetNone"));
 
-    if (gear) gear.classList.toggle("is-on", settingsOpen);
+    if (gear) {
+      gear.classList.toggle("is-on", settingsOpen);
+      gear.title = t("pill.settings");
+      gear.setAttribute("aria-label", t("pill.settings"));
+    }
+    if (helpBtn) {
+      helpBtn.title = t("pill.help");
+      helpBtn.setAttribute("aria-label", t("pill.help"));
+    }
   }
 
   /* ------------------------------------------- welcome / help card + hint */
 
   /* One short line per pill button - no wall of text. */
-  const HELP_LINES = [
-    ["\u25A6 Grid / \u2630 List", "switch between cards and the classic table"],
-    ["\u2316 Hide", "click an element, or a device card, to hide it"],
-    ["\u21BA Reset", "bring back everything you hid"],
-    ["\u2699 Settings", "restore hidden items, choose the view, export / import"],
-  ];
+  function helpLines() {
+    return [
+      ["\u25A6 " + t("pill.viewGrid") + " / \u2630 " + t("pill.viewList"), t("help.line.view")],
+      ["\u2316 " + t("pill.pick"), t("help.line.pick")],
+      ["\u21BA " + t("pill.reset"), t("help.line.reset")],
+      ["\u2699 " + t("pill.settings"), t("help.line.settings")],
+    ];
+  }
 
   function ensureHelp() {
     if (help && help.isConnected) return;
@@ -478,15 +819,15 @@
     help = document.createElement("div");
     help.id = "tsc-help";
     help.setAttribute("role", "dialog");
-    help.setAttribute("aria-label", "Tailscale Clean Console help");
+    help.setAttribute("aria-label", t("help.aria"));
 
     const title = document.createElement("p");
     title.className = "tsc-help-title";
-    title.textContent = "Tailscale Clean Console";
+    title.textContent = t("help.title");
 
     const list = document.createElement("ul");
     list.className = "tsc-help-list";
-    for (const [key, text] of HELP_LINES) {
+    for (const [key, text] of helpLines()) {
       const item = document.createElement("li");
       item.setAttribute("data-help-line", "");
       const name = document.createElement("b");
@@ -503,12 +844,12 @@
     const tourBtn = document.createElement("button");
     tourBtn.type = "button";
     tourBtn.dataset.help = "tour";
-    tourBtn.textContent = "10-second tour";
+    tourBtn.textContent = t("help.tour");
 
     const dismiss = document.createElement("button");
     dismiss.type = "button";
     dismiss.dataset.help = "dismiss";
-    dismiss.textContent = "Got it";
+    dismiss.textContent = t("help.dismiss");
 
     actions.append(tourBtn, dismiss);
     help.append(title, list, actions);
@@ -552,7 +893,7 @@
     hint = document.createElement("div");
     hint.id = "tsc-hint";
     hint.setAttribute("role", "status");
-    hint.textContent = "Click a device card to hide the whole device.";
+    hint.textContent = t("hint.device");
     (document.body || document.documentElement).appendChild(hint);
   }
 
@@ -567,12 +908,12 @@
   const TOUR_STEPS = [
     {
       selector: '#tsc-pill [data-act="view"]',
-      text: "Grid or List \u2014 switch the layout whenever you like.",
+      textKey: "tour.view",
       place: "top",
     },
     {
       selector: "table.tsc-machines tr.tsc-section--online",
-      text: "Online and Offline split the machines, with live counts that follow what you hide.",
+      textKey: "tour.sections",
       place: "bottom",
     },
   ];
@@ -586,15 +927,15 @@
     tour.id = "tsc-tour";
     tour.setAttribute("role", "dialog");
     tour.setAttribute("aria-modal", "true");
-    tour.setAttribute("aria-label", "Quick tour");
+    tour.setAttribute("aria-label", t("tour.aria"));
     tour.innerHTML =
       '<div class="tsc-tour-spot" aria-hidden="true"></div>' +
       '<div class="tsc-tour-card">' +
       '<p class="tsc-tour-text"></p>' +
       '<div class="tsc-tour-actions">' +
       '<span class="tsc-tour-progress"></span>' +
-      '<button type="button" data-tour="skip">Skip</button>' +
-      '<button type="button" data-tour="next">Next</button>' +
+      '<button type="button" data-tour="skip"></button>' +
+      '<button type="button" data-tour="next"></button>' +
       "</div></div>";
     tour.addEventListener("click", onTourClick);
     document.addEventListener("keydown", onTourKey, true);
@@ -614,10 +955,14 @@
       return;
     }
 
-    tour.querySelector(".tsc-tour-text").textContent = TOUR_STEPS[index].text;
-    tour.querySelector(".tsc-tour-progress").textContent = index + 1 + " / " + TOUR_STEPS.length;
+    tour.querySelector(".tsc-tour-text").textContent = t(TOUR_STEPS[index].textKey);
+    tour.querySelector(".tsc-tour-progress").textContent = t("tour.progress", {
+      index: index + 1,
+      total: TOUR_STEPS.length,
+    });
+    tour.querySelector('[data-tour="skip"]').textContent = t("tour.skip");
     tour.querySelector('[data-tour="next"]').textContent =
-      index === TOUR_STEPS.length - 1 ? "Done" : "Next";
+      index === TOUR_STEPS.length - 1 ? t("tour.done") : t("tour.next");
     placeTour();
 
     clearTimeout(tourTimer);
@@ -702,7 +1047,7 @@
 
   /* --------------------------------------------------------- settings pop */
 
-  const SETTING_KEYS = ["schema", "view", "hidden", "hiddenDevices", "sync", "onboarded", "hintShown"];
+  const SETTING_KEYS = ["schema", "view", "hidden", "hiddenDevices", "sync", "onboarded", "hintShown", "locale", "pillHidden"];
 
   function toggleSettings() {
     if (settingsOpen) closeSettings();
@@ -732,7 +1077,7 @@
     settingsEl = document.createElement("div");
     settingsEl.id = "tsc-settings";
     settingsEl.setAttribute("role", "dialog");
-    settingsEl.setAttribute("aria-label", "Tailscale Clean Console settings");
+    settingsEl.setAttribute("aria-label", t("settings.aria"));
     settingsEl.addEventListener("click", onSettingsClick);
     settingsEl.addEventListener("change", onSettingsChange);
     (document.body || document.documentElement).appendChild(settingsEl);
@@ -743,26 +1088,27 @@
   function renderSettings() {
     if (!settingsEl) return;
     settingsEl.textContent = "";
+    settingsEl.setAttribute("aria-label", t("settings.aria"));
 
     const head = document.createElement("div");
     head.className = "tsc-settings-head";
     const title = document.createElement("p");
     title.className = "tsc-settings-title";
-    title.textContent = "Settings";
+    title.textContent = t("settings.title");
     const close = settingsButton("close", "\u00D7");
-    close.setAttribute("aria-label", "Close settings");
+    close.setAttribute("aria-label", t("settings.close"));
     head.append(title, close);
 
     const viewRow = document.createElement("div");
     viewRow.className = "tsc-settings-row";
     const viewLabel = document.createElement("span");
     viewLabel.className = "tsc-settings-label";
-    viewLabel.textContent = "Default view";
+    viewLabel.textContent = t("settings.defaultView");
     const viewGroup = document.createElement("div");
     viewGroup.className = "tsc-settings-seg";
     viewGroup.setAttribute("role", "group");
-    viewGroup.setAttribute("aria-label", "Default view");
-    for (const [value, text] of [["grid", "\u25A6 Grid"], ["list", "\u2630 List"]]) {
+    viewGroup.setAttribute("aria-label", t("settings.defaultView"));
+    for (const [value, text] of [["grid", "\u25A6 " + t("pill.viewGrid")], ["list", "\u2630 " + t("pill.viewList")]]) {
       const btn = settingsButton("view-" + value, text);
       const on = settings.view === value;
       btn.setAttribute("aria-pressed", String(on));
@@ -771,7 +1117,24 @@
     }
     viewRow.append(viewLabel, viewGroup);
 
-    settingsEl.append(head, viewRow, hiddenSection("devices"), hiddenSection("elements"));
+    const langRow = document.createElement("div");
+    langRow.className = "tsc-settings-row";
+    const langLabel = document.createElement("span");
+    langLabel.className = "tsc-settings-label";
+    langLabel.textContent = t("settings.language");
+    const localeSelect = document.createElement("select");
+    localeSelect.dataset.settings = "locale";
+    localeSelect.setAttribute("aria-label", t("settings.language"));
+    for (const locale of LOCALES) {
+      const option = document.createElement("option");
+      option.value = locale.code;
+      option.textContent = locale.label;
+      if (locale.code === settings.locale) option.selected = true;
+      localeSelect.appendChild(option);
+    }
+    langRow.append(langLabel, localeSelect);
+
+    settingsEl.append(head, viewRow, langRow, hiddenSection("devices"), hiddenSection("elements"));
 
     const area = syncArea();
     const syncRow = document.createElement("label");
@@ -781,26 +1144,33 @@
     syncBox.dataset.settings = "sync";
     syncBox.checked = settings.sync === true;
     syncBox.disabled = !area;
-    syncBox.setAttribute("aria-label", "Sync settings across devices");
+    syncBox.setAttribute("aria-label", t("settings.sync"));
     const syncText = document.createElement("span");
-    syncText.textContent = "Sync settings across devices";
+    syncText.textContent = t("settings.sync");
     syncRow.append(syncBox, syncText);
     if (!area) {
       const note = document.createElement("span");
       note.className = "tsc-settings-note";
-      note.textContent = "not available in this browser";
+      note.textContent = t("settings.syncUnavailable");
       syncRow.appendChild(note);
     }
 
     const io = document.createElement("div");
     io.className = "tsc-settings-io";
-    io.append(settingsButton("export", "Export JSON"), settingsButton("import", "Import JSON"));
+    io.append(settingsButton("export", t("settings.export")), settingsButton("import", t("settings.import")));
+
+    const pillRow = document.createElement("div");
+    pillRow.className = "tsc-settings-pill";
+    const hidePill = settingsButton("hide-pill", t("settings.hidePill"));
+    hidePill.title = t("settings.hidePillTitle");
+    hidePill.setAttribute("aria-label", t("settings.hidePillTitle"));
+    pillRow.appendChild(hidePill);
 
     const version = document.createElement("p");
     version.className = "tsc-settings-version";
-    version.textContent = "settings v" + settings.schema;
+    version.textContent = t("settings.version", { version: settings.schema });
 
-    settingsEl.append(syncRow, io, version);
+    settingsEl.append(syncRow, io, pillRow, version);
   }
 
   function settingsButton(action, text) {
@@ -825,10 +1195,11 @@
     head.className = "tsc-settings-subhead";
     const sub = document.createElement("span");
     sub.className = "tsc-settings-subtitle";
-    sub.textContent = (isDevices ? "Hidden devices" : "Hidden elements") + " (" + keys.length + ")";
-    const reset = settingsButton(isDevices ? "reset-devices" : "reset-elements", "Show all");
-    reset.setAttribute("aria-label", isDevices ? "Show hidden devices" : "Show hidden elements");
-    reset.title = isDevices ? "Show hidden devices" : "Show hidden elements";
+    const label = isDevices ? t("settings.hiddenDevices") : t("settings.hiddenElements");
+    sub.textContent = label + " (" + keys.length + ")";
+    const reset = settingsButton(isDevices ? "reset-devices" : "reset-elements", t("settings.showAll"));
+    reset.setAttribute("aria-label", t(isDevices ? "settings.showAllDevices" : "settings.showAllElements"));
+    reset.title = t(isDevices ? "settings.showAllDevices" : "settings.showAllElements");
     reset.disabled = keys.length === 0;
     head.append(sub, reset);
     section.appendChild(head);
@@ -842,8 +1213,8 @@
         name.className = "tsc-settings-item";
         name.textContent = isDevices ? deviceNameFor(key) : key;
         name.title = key;
-        const show = settingsButton(isDevices ? "show-device" : "show-element", "Show");
-        show.setAttribute("aria-label", "Show " + name.textContent);
+        const show = settingsButton(isDevices ? "show-device" : "show-element", t("settings.show"));
+        show.setAttribute("aria-label", t("settings.showItem", { name: name.textContent }));
         show.dataset.key = key;
         show.dataset.index = String(index);
         item.append(name, show);
@@ -870,6 +1241,10 @@
       case "view-list":
         setView("list");
         return;
+      case "hide-pill":
+        closeSettings();
+        setPillHidden(true);
+        return;
       case "show-device":
         removeKey(settings.hiddenDevices, button.dataset.key);
         return;
@@ -894,6 +1269,16 @@
   }
 
   function onSettingsChange(event) {
+    const locale = event.target.closest('select[data-settings="locale"]');
+    if (locale) {
+      settings.locale = MESSAGES[locale.value] ? locale.value : "en";
+      saveSettings();
+      sweep();
+      renderSettings();
+      renderPill();
+      return;
+    }
+
     const box = event.target.closest('input[data-settings="sync"]');
     if (!box) return;
     settings.sync = box.checked === true;
@@ -1010,6 +1395,7 @@
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
     if (!SETTING_KEYS.some((key) => key in raw)) return false;
     settings = normalizeSettings(raw);
+    undoStack.length = 0;
     pruneDone = false;
     saveSettings();
     sweep();
@@ -1023,13 +1409,14 @@
   let highlighted = null;
   let highlightedOutline = "";
   let highlightedOffset = "";
+  let pickFocus = null;
 
   /* The extension's own floating UI must never be pickable or highlightable. */
   function isTscUi(el) {
     return !!(
       el &&
       el.closest &&
-      el.closest("#tsc-pill, #tsc-help, #tsc-settings, #tsc-settings-file, #tsc-hint, #tsc-tour")
+      el.closest("#tsc-pill, #tsc-help, #tsc-settings, #tsc-settings-file, #tsc-hint, #tsc-tour, #tsc-toast")
     );
   }
 
@@ -1042,32 +1429,46 @@
       document.addEventListener("mousemove", onPickMove, true);
       document.addEventListener("click", onPickClick, true);
       document.addEventListener("keydown", onPickKey, true);
+      document.addEventListener("focusin", onPickFocus, true);
       /* contextual hint, on the very first Hide only */
       if (!settings.hintShown) {
         settings.hintShown = true;
         saveSettings();
         ensureHint();
       }
+      /* seed the keyboard cursor so Enter has a target right away */
+      pickFocus = pickableRows()[0] || null;
+      if (pickFocus) setHighlight(pickFocus, true);
     } else {
       document.removeEventListener("mousemove", onPickMove, true);
       document.removeEventListener("click", onPickClick, true);
       document.removeEventListener("keydown", onPickKey, true);
+      document.removeEventListener("focusin", onPickFocus, true);
       clearHighlight();
+      pickFocus = null;
       removeHint();
     }
     renderPill();
     syncHelp();
   }
 
-  function onPickMove(event) {
-    const el = document.elementFromPoint(event.clientX, event.clientY);
-    if (!el || el === highlighted || isTscUi(el)) return;
+  function pickableRows() {
+    const table = onMachinesPage() ? findMachinesTable() : null;
+    if (!table) return [];
+    return deviceRows(table).filter((row) => !row.classList.contains("tsc-device-hidden"));
+  }
+
+  /* Outline whatever the picker is about to hide, for the mouse and the
+     keyboard alike. */
+  function setHighlight(el, scroll) {
+    if (!el || el === highlighted) return;
     clearHighlight();
     highlighted = el;
     highlightedOutline = el.style.outline;
     highlightedOffset = el.style.outlineOffset;
     el.style.outline = "2px solid #7c3aed";
     el.style.outlineOffset = "-2px";
+    if (scroll) el.scrollIntoView({ block: "nearest", inline: "nearest" });
   }
 
   function clearHighlight() {
@@ -1077,45 +1478,85 @@
     highlighted = null;
   }
 
+  function onPickMove(event) {
+    const el = document.elementFromPoint(event.clientX, event.clientY);
+    if (!el || isTscUi(el)) return;
+    setHighlight(el, false);
+  }
+
   function onPickClick(event) {
     if (isTscUi(event.target)) return; /* let the pill and cards work */
 
     event.preventDefault();
     event.stopPropagation();
 
-    const el = document.elementFromPoint(event.clientX, event.clientY) || event.target;
+    /* Prefer the element under the pointer for mouse clicks, but fall back to
+       the event target when there are no coordinates (keyboard / synthetic
+       clicks report 0,0, which would otherwise hit the wrong element). */
+    let el = event.target;
+    if (event.clientX || event.clientY) el = document.elementFromPoint(event.clientX, event.clientY) || el;
     if (isTscUi(el)) return;
 
     /* clicking a device (anywhere on its card) hides the whole device, so it
        also drops out of the online/offline totals */
     const device = deviceRowFor(el);
-    if (device) {
-      const key = deviceKey(device);
-      if (key && !settings.hiddenDevices.includes(key)) {
-        settings.hiddenDevices.push(key);
-        saveSettings();
-      }
-      console.info("[tailscale-clean] hid device", device, "with key:", key);
-      setPick(false);
-      sweep();
-      return;
-    }
-
-    const selector = selectorFor(el);
-    if (selector && !settings.hidden.includes(selector)) {
-      settings.hidden.push(selector);
-      saveSettings();
-      applyHidden();
-    }
-    console.info("[tailscale-clean] hidden element", el, "with selector:", selector);
+    if (device) hideDevice(device);
+    else hideElement(el);
     setPick(false);
   }
 
+  /* Keep the keyboard cursor on whatever the user tabs to. */
+  function onPickFocus(event) {
+    if (!pickArmed) return;
+    const el = event.target;
+    if (!el || isTscUi(el)) return;
+    const row = deviceRowFor(el);
+    if (row) pickFocus = row;
+    else if (el !== document.body) pickFocus = el;
+    setHighlight(pickFocus, false);
+  }
+
   function onPickKey(event) {
-    if (event.key !== "Escape") return;
-    event.preventDefault();
-    event.stopPropagation();
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      setPick(false);
+      return;
+    }
+    if (!pickArmed) return;
+
+    if (event.key === "Enter") {
+      event.preventDefault();
+      event.stopPropagation();
+      activatePickFocus();
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowRight" || event.key === "ArrowUp" || event.key === "ArrowLeft") {
+      event.preventDefault();
+      event.stopPropagation();
+      const forward = event.key === "ArrowDown" || event.key === "ArrowRight";
+      movePickFocus(forward ? 1 : -1);
+    }
+  }
+
+  /* Enter hides the element the keyboard cursor (or focus) sits on. */
+  function activatePickFocus() {
+    const target = pickFocus && pickFocus.isConnected ? pickFocus : document.activeElement;
+    if (!target || target === document.body || isTscUi(target)) return;
+    const row = deviceRowFor(target);
+    if (row) hideDevice(row);
+    else hideElement(target);
     setPick(false);
+  }
+
+  function movePickFocus(delta) {
+    const rows = pickableRows();
+    if (!rows.length) return;
+    let index = rows.indexOf(pickFocus);
+    if (index === -1) index = delta > 0 ? -1 : 0;
+    index = (index + delta + rows.length) % rows.length;
+    pickFocus = rows[index];
+    setHighlight(pickFocus, true);
   }
 
   function selectorFor(el) {
@@ -1162,6 +1603,67 @@
     return null;
   }
 
+  /* -------------------------------------------------- keyboard shortcuts */
+
+  /* Never hijack keys while the user is typing in the console's own fields. */
+  function isTypingTarget(el) {
+    if (!el || !el.tagName) return false;
+    const tag = el.tagName;
+    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable === true;
+  }
+
+  function onGlobalKey(event) {
+    /* Cmd/Ctrl+Z undoes the last hide (leave the browser's undo alone when we
+       have nothing to put back). */
+    if ((event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "z") {
+      if (undoStack.length && !isTypingTarget(event.target)) {
+        event.preventDefault();
+        undoLast();
+      }
+      return;
+    }
+
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    if (event.defaultPrevented) return;
+
+    if (event.key === "Escape") {
+      if (settingsOpen) {
+        event.preventDefault();
+        closeSettings();
+        return;
+      }
+      if (helpOpen) {
+        event.preventDefault();
+        helpOpen = false;
+        syncHelp();
+        return;
+      }
+      return; /* the picker and the tour handle their own Escape */
+    }
+
+    if (!onMachinesPage() || tour || settingsOpen) return;
+    if (isTypingTarget(event.target)) return;
+
+    switch (event.key) {
+      case "g":
+        event.preventDefault();
+        toggleView();
+        break;
+      case "h":
+        event.preventDefault();
+        setPick(!pickArmed);
+        break;
+      case "r":
+        event.preventDefault();
+        resetHidden();
+        break;
+      case "p":
+        event.preventDefault();
+        setPillHidden(!settings.pillHidden);
+        break;
+    }
+  }
+
   /* -------------------------------------------------- sweep + observers */
 
   function sweep() {
@@ -1182,6 +1684,7 @@
       removeHint();
       if (tour) endTour();
       closeSettings();
+      removeToast();
     }
     syncHelp();
   }
@@ -1197,6 +1700,7 @@
     }, 100);
   }
 
+  document.addEventListener("keydown", onGlobalKey, true);
   sweep();
   hydrateFromSync();
   new MutationObserver(schedule).observe(document.documentElement, {

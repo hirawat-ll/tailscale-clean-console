@@ -15,10 +15,11 @@ entirely on your computer and does not collect, transmit, or sell any data.
 ## What it stores
 
 Your layout choice (`view`), the elements you hid (`hidden`), the devices you
-hid (`hiddenDevices`), and three small first-run / preference flags — whether
-you have already seen the welcome card (`onboarded`), the one-time hide hint
-(`hintShown`), and whether cross-device sync is on (`sync`) — are saved in your
-browser's **local storage for the Tailscale site** (`localStorage` key
+hid (`hiddenDevices`), your interface language (`locale`), whether the floating
+pill is hidden (`pillHidden`), and three small first-run / preference flags —
+whether you have already seen the welcome card (`onboarded`), the one-time hide
+hint (`hintShown`), and whether cross-device sync is on (`sync`) — are saved in
+your browser's **local storage for the Tailscale site** (`localStorage` key
 `tsc:settings:v1`), together with a `schema` marker that lets a newer version of
 the extension read older data safely. This data:
 

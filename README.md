@@ -37,12 +37,18 @@ On your first visit a short welcome card explains the buttons, with an optional
 Hiding a device drops its card from the **Online / Offline** totals — reset
 brings everything back.
 
+Every hide and reset shows a short toast, and a hide offers **Undo** (the last
+one is also on `Cmd/Ctrl+Z`). Keyboard shortcuts: `g` grid/list, `h` hide,
+`r` reset, `p` show/hide the pill, `Esc` cancel.
+
 The **⚙ Settings** popover lists your hidden devices by name and your hidden
 elements, each with a per-item **Show** and a section **Show all** button, so you
 can restore devices and elements independently. It also lets you pick the
-default view, **Export** / **Import** your settings as JSON, and optionally
-**Sync settings across devices** through your browser's own sync storage
-(off by default; falls back to local storage where unavailable).
+default view and the interface **language** (English or Español today), **Hide
+the pill** for a distraction-free console (bring it back with `p`), **Export** /
+**Import** your settings as JSON, and optionally **Sync settings across devices**
+through your browser's own sync storage (off by default; falls back to local
+storage where unavailable).
 
 Your layout and hidden items are saved per-site in `localStorage`
 (`tsc:settings:v1`) and never leave your browser. See [PRIVACY.md](PRIVACY.md).

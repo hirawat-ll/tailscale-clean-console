@@ -51,15 +51,15 @@ extension itself.
 
 ## Extension experience
 
-- [ ] Undo (`Cmd/Ctrl+Z`) for the last hide, plus a toast:
+- [x] Undo (`Cmd/Ctrl+Z`) for the last hide, plus a toast:
       "Hidden studio-mac-mini — Undo".
-- [ ] Toast confirmations so hide/reset are not silent.
-- [ ] Keyboard shortcuts: `g` grid/list, `h` hide, `r` reset, `Esc` cancel.
-- [ ] Accessible pill: `aria-pressed` on toggles, visible focus rings, and a
+- [x] Toast confirmations so hide/reset are not silent.
+- [x] Keyboard shortcuts: `g` grid/list, `h` hide, `r` reset, `Esc` cancel.
+- [x] Accessible pill: `aria-pressed` on toggles, visible focus rings, and a
       keyboard-operable picker.
-- [ ] Hide the pill itself and reopen it with a shortcut, for power users.
-- [ ] Respect `prefers-reduced-motion` for the card transitions.
-- [ ] i18n scaffold with at least one non-English locale.
+- [x] Hide the pill itself and reopen it with a shortcut, for power users.
+- [x] Respect `prefers-reduced-motion` for the card transitions.
+- [x] i18n scaffold with at least one non-English locale.
 
 ## Grid & machines UX
 
