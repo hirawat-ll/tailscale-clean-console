@@ -1,7 +1,7 @@
 # Firefox Add-ons (AMO) — listing copy
 
-Paste these into the AMO developer hub. Asset files live in `screenshots/`
-(paths relative to this folder).
+Paste these into the AMO developer hub. Asset files live in the shared
+`../screenshots/` (paths relative to this folder).
 
 ## Listing
 
@@ -90,9 +90,9 @@ collected/transmitted.
 | Asset | File |
 | --- | --- |
 | Icon (128×128) | ships in the package (`firefox/icons/`) |
-| Screenshot 1 — card grid | `screenshots/1-grid-view-1280x800.png` |
-| Screenshot 2 — classic view | `screenshots/2-classic-view-1280x800.png` |
-| Screenshot 3 — dark mode | `screenshots/3-dark-mode-1280x800.png` |
+| Screenshot 1 — card grid | `../screenshots/1-grid-view-1280x800.png` |
+| Screenshot 2 — classic view | `../screenshots/2-classic-view-1280x800.png` |
+| Screenshot 3 — dark mode | `../screenshots/3-dark-mode-1280x800.png` |
 
 ## Upload package
 

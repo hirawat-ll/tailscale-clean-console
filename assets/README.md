@@ -12,16 +12,19 @@ tailscale-clean-console-firefox-1.0.0.zip    upload to Firefox Add-ons (AMO)
 
 icons/icon-1024.png      master icon (the PNGs shipped in the packages are
                          generated from the same drawing code)
+screenshots/             shared images both stores upload: before.png and
+                         after.png (framed README shots) plus
+                         1-grid-view, 2-classic-view, 3-dark-mode (1280×800)
+sense-ai.svg             "Powered by Sense AI" lockup used in the repo README
 chrome-web-store/
   listing.md             ready-to-paste store listing, privacy answers, assets
   promo/                 small tile 440×280, large tile 920×680, marquee 1400×560
-  screenshots/           1280×800 store screenshots (grid, classic, dark)
 firefox-addons/
   listing.md             ready-to-paste AMO listing
-  screenshots/           1280×800 store screenshots (grid, classic, dark)
 ```
 
-The `screenshots/` folder in the repo root holds the two framed README images.
+Both stores use identical screenshots, so they share the single
+`assets/screenshots/` folder; only the Chrome promo tiles are store-specific.
 
 ## Rebuild
 

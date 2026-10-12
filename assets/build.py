@@ -9,9 +9,9 @@ Screenshots are captured from test/mock.html with real Chromium (Playwright) at
     chrome/icons/icon{16,32,48,128}.png
     firefox/icons/icon{16,32,48,96,128}.png
     assets/icons/icon-1024.png
-    screenshots/{before,after}.png                 README
+    assets/screenshots/{before,after}.png          README
+    assets/screenshots/*-1280x800.png              shared store screenshots
     assets/chrome-web-store/promo/*.png            store banners
-    assets/{chrome-web-store,firefox-addons}/screenshots/*.png
 """
 from pathlib import Path
 
@@ -157,23 +157,24 @@ def build_readme_shots(shots):
         canvas = gradient(win.width + pad * 2, win.height + pad * 2,
                           (243, 242, 247), (226, 224, 235), glow=(0.3, -0.2, 1.25, 0.9, 90, (221, 214, 245)))
         place(canvas, win, (pad, pad), alpha=70, blur=30)
-        write(canvas, ROOT / f"screenshots/{key}.png")
+        write(canvas, ROOT / f"assets/screenshots/{key}.png")
 
 
 def build_store_shots(shots):
-    """Store screenshots, exactly 1280x800, no letterboxing."""
+    """Store screenshots, exactly 1280x800, no letterboxing.
+
+    Both stores use the same three shots, so they live in one shared folder."""
     specs = [
         ("1-grid-view", "after", (37, 36, 43), (18, 18, 22)),
         ("2-classic-view", "before", (37, 36, 43), (18, 18, 22)),
         ("3-dark-mode", "after_dark", (24, 24, 28), (10, 10, 12)),
     ]
-    for store in ("chrome-web-store", "firefox-addons"):
-        out = ROOT / "assets" / store / "screenshots"
-        for name, key, top, bottom in specs:
-            canvas = gradient(1280, 800, top, bottom, glow=(0.45, -0.4, 1.15, 0.8, 60, (86, 64, 160)))
-            win = make_window(fit(shots[key], 1160, 640), 1160)
-            place(canvas, win, ((1280 - win.width) // 2, (800 - win.height) // 2), alpha=150, blur=34)
-            write(canvas, out / f"{name}-1280x800.png")
+    out = ROOT / "assets/screenshots"
+    for name, key, top, bottom in specs:
+        canvas = gradient(1280, 800, top, bottom, glow=(0.45, -0.4, 1.15, 0.8, 60, (86, 64, 160)))
+        win = make_window(fit(shots[key], 1160, 640), 1160)
+        place(canvas, win, ((1280 - win.width) // 2, (800 - win.height) // 2), alpha=150, blur=34)
+        write(canvas, out / f"{name}-1280x800.png")
 
 
 def build_promo(shots):

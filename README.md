@@ -1,4 +1,7 @@
-# Tailscale Clean Console
+# <img src="assets/icons/icon-1024.png" alt="" width="40" height="40" align="middle"> Tailscale Clean Console
+
+**The Firefox extension is live →**
+<https://addons.mozilla.org/en-US/firefox/addon/tailscale-clean-console/>
 
 A tiny browser extension that cleans up the Tailscale admin console
 (`console.tailscale.com/admin/machines`):
@@ -9,14 +12,16 @@ A tiny browser extension that cleans up the Tailscale admin console
 
 | Before | After |
 | --- | --- |
-| ![before](screenshots/before.png) | ![after](screenshots/after.png) |
+| ![before](assets/screenshots/before.png) | ![after](assets/screenshots/after.png) |
 
 ## Install
 
 **Chrome / Edge (MV3)** — open `chrome://extensions`, turn on *Developer
 mode*, click **Load unpacked**, pick the `chrome/` folder.
 
-**Firefox (MV2)** — open `about:debugging#/runtime/this-firefox`, click
+**Firefox (MV2)** — install it live from
+[Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/tailscale-clean-console/),
+or load it unpacked: open `about:debugging#/runtime/this-firefox`, click
 **Load Temporary Add-on…**, pick `firefox/manifest.json`. This lasts until
 Firefox restarts; to keep it, sign the folder with
 `npx web-ext sign --source-dir firefox --channel unlisted`.
@@ -46,7 +51,7 @@ is stored or sent anywhere — see [PRIVACY.md](PRIVACY.md).
 chrome/   Chrome / Edge extension (Manifest V3)
 firefox/  Firefox extension (Manifest V2)
 test/     mock Machines page + assertion harness
-assets/   store zips, icons, banners and listing copy for both stores
+assets/   store zips, icons, screenshots, banners and listing copy
 ```
 
 Run the tests with `node test/serve.mjs`, then open
@@ -65,3 +70,7 @@ See [ROADMAP.md](ROADMAP.md) for planned improvements.
 
 Unofficial project, not affiliated with Tailscale Inc. See
 [PRIVACY.md](PRIVACY.md).
+
+---
+
+<a href="https://sensescape.in/"><img src="assets/sense-ai.svg" alt="Powered by Sense AI" height="40"></a>

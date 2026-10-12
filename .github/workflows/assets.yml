@@ -42,7 +42,7 @@ jobs:
         with:
           name: regenerated-assets
           path: |
-            screenshots/
+            assets/screenshots/
             assets/chrome-web-store/
             assets/firefox-addons/
             assets/icons/

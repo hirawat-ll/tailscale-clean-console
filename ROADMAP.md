@@ -22,6 +22,9 @@ extension itself.
   `localStorage` under `tsc:settings:v1`.
 - CI: headless harness for both builds, `web-ext lint`, privacy/parity guards,
   and `v*` tag releases with the store zips attached.
+- Store assets consolidated: both builds share a single `assets/screenshots/`
+  folder (README + store shots) instead of duplicated per-store copies, and the
+  Firefox listing links to the live AMO page.
 
 ## Onboarding & first-run
 
