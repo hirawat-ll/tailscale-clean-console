@@ -28,14 +28,14 @@ extension itself.
 
 ## Onboarding & first-run
 
-- [ ] One-time welcome card on the first visit to Machines: one line per pill
+- [x] One-time welcome card on the first visit to Machines: one line per pill
       button, no wall of text.
-- [ ] Dismiss writes `onboarded: true` into `tsc:settings:v1` so it never
+- [x] Dismiss writes `onboarded: true` into `tsc:settings:v1` so it never
       shows again.
-- [ ] Contextual hint on the first Hide: "Click a device card to hide the
+- [x] Contextual hint on the first Hide: "Click a device card to hide the
       whole device."
-- [ ] Tiny `?` button in the pill to reopen the help card on demand.
-- [ ] Optional 10-second tour that highlights Grid and the section counts.
+- [x] Tiny `?` button in the pill to reopen the help card on demand.
+- [x] Optional 10-second tour that highlights Grid and the section counts.
 
 ## Settings & hidden state
 

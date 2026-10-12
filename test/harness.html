@@ -53,6 +53,21 @@ frame.addEventListener('load', async () => {
   assert('address/version labels dropped', !labels.some((l) => /^(addresses?|ip|version)$/i.test(l)));
   assert('pill present', !!d.querySelector('#tsc-pill'));
 
+  // first-run welcome / help card
+  assert('welcome card shown on first visit', !!d.querySelector('#tsc-help'));
+  assert('welcome card has one line per pill button', d.querySelectorAll('#tsc-help [data-help-line]').length === 3);
+  d.querySelector('#tsc-help [data-help="dismiss"]').click();
+  await wait(300);
+  assert('dismiss closes the welcome card', !d.querySelector('#tsc-help'));
+  const savedOn = JSON.parse(w.localStorage.getItem('tsc:settings:v1') || '{}');
+  assert('dismiss saved onboarded:true', savedOn.onboarded === true);
+  d.querySelector('#tsc-pill [data-act="help"]').click();
+  await wait(300);
+  assert('? button reopens the help card', !!d.querySelector('#tsc-help'));
+  d.querySelector('#tsc-help [data-help="dismiss"]').click();
+  await wait(300);
+  assert('help card closes again', !d.querySelector('#tsc-help'));
+
   // online / offline sections
   const secOn = d.querySelector('tr.tsc-section--online');
   const secOff = d.querySelector('tr.tsc-section--offline');
@@ -87,7 +102,10 @@ frame.addEventListener('load', async () => {
 
   const target = d.querySelector('.count');
   assert('picker target exists', !!target);
+  assert('no hide hint before the first hide', !d.querySelector('#tsc-hint'));
   d.querySelector('#tsc-pill [data-act="pick"]').click();
+  await wait(50);
+  assert('first Hide shows the device hint', !!d.querySelector('#tsc-hint'));
   const r = target.getBoundingClientRect();
   const opts = { bubbles: true, cancelable: true, clientX: r.left + 3, clientY: r.top + 3 };
   target.dispatchEvent(new w.MouseEvent('mousemove', opts));
@@ -95,6 +113,7 @@ frame.addEventListener('load', async () => {
   target.dispatchEvent(new w.MouseEvent('click', opts));
   await wait(300);
   assert('picker hid the element', cs(target).display === 'none');
+  assert('hint cleared after hiding', !d.querySelector('#tsc-hint'));
   const saved = JSON.parse(w.localStorage.getItem('tsc:settings:v1') || '{}');
   assert('picker saved one selector', Array.isArray(saved.hidden) && saved.hidden.length === 1);
 
@@ -104,6 +123,8 @@ frame.addEventListener('load', async () => {
   const devLink = firstOnline.querySelector('.name a') || firstOnline.querySelector('a');
   assert('device target exists', !!devLink);
   d.querySelector('#tsc-pill [data-act="pick"]').click();
+  await wait(50);
+  assert('hint shows only once', !d.querySelector('#tsc-hint'));
   const dr = devLink.getBoundingClientRect();
   const dopts = { bubbles: true, cancelable: true, clientX: dr.left + 2, clientY: dr.top + 2 };
   devLink.dispatchEvent(new w.MouseEvent('mousemove', dopts));
@@ -121,6 +142,24 @@ frame.addEventListener('load', async () => {
   assert('reset restored the element', cs(target).display !== 'none');
   assert('reset restored the hidden device', cs(firstOnline).display !== 'none');
   assert('reset restored online total', countOf('tr.tsc-section--online') === '5');
+
+  // optional 10-second tour, launched from the help card
+  d.querySelector('#tsc-pill [data-act="help"]').click();
+  await wait(200);
+  d.querySelector('#tsc-help [data-help="tour"]').click();
+  await wait(300);
+  assert('tour starts from the help card', !!d.querySelector('#tsc-tour'));
+  assert('tour spotlights the Grid button', !!d.querySelector('#tsc-tour .tsc-tour-spot'));
+  assert('tour shows step 1 of 2', d.querySelector('.tsc-tour-progress').textContent === '1 / 2');
+  d.querySelector('#tsc-tour [data-tour="next"]').click();
+  await wait(200);
+  assert('tour advances to the section counts', d.querySelector('.tsc-tour-progress').textContent === '2 / 2');
+  d.querySelector('#tsc-tour [data-tour="skip"]').click();
+  await wait(300);
+  assert('tour closes on skip', !d.querySelector('#tsc-tour'));
+  assert('help card returns after the tour', !!d.querySelector('#tsc-help'));
+  d.querySelector('#tsc-help [data-help="dismiss"]').click();
+  await wait(200);
 
   w.history.pushState({}, '', '/admin/machines/some-detail');
   w.dispatchEvent(new w.PopStateEvent('popstate'));

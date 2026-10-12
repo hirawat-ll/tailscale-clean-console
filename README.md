@@ -1,14 +1,11 @@
 # <img src="assets/icons/icon-1024.png" alt="" width="40" height="40" align="middle"> Tailscale Clean Console
 
-**The Firefox extension is live →**
+A tiny browser extension that cleans up the Tailscale admin console. It hides
+the "Your free trial has ended" banner, shows your machines as an **Online /
+Offline** card grid, and lets you hide anything else with one-click reset.
+
+Live on Firefox Add-ons:
 <https://addons.mozilla.org/en-US/firefox/addon/tailscale-clean-console/>
-
-A tiny browser extension that cleans up the Tailscale admin console
-(`console.tailscale.com/admin/machines`):
-
-- hides the "Your free trial has ended" banner
-- shows the machine list as a card grid, grouped into **Online** / **Offline**
-- lets you hide any other element, with one-click reset
 
 | Before | After |
 | --- | --- |
@@ -16,15 +13,12 @@ A tiny browser extension that cleans up the Tailscale admin console
 
 ## Install
 
-**Chrome / Edge (MV3)** — open `chrome://extensions`, turn on *Developer
-mode*, click **Load unpacked**, pick the `chrome/` folder.
-
-**Firefox (MV2)** — install it live from
-[Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/tailscale-clean-console/),
-or load it unpacked: open `about:debugging#/runtime/this-firefox`, click
-**Load Temporary Add-on…**, pick `firefox/manifest.json`. This lasts until
-Firefox restarts; to keep it, sign the folder with
-`npx web-ext sign --source-dir firefox --channel unlisted`.
+- **Firefox (MV2)** — [install from Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/tailscale-clean-console/),
+  or load `firefox/manifest.json` at `about:debugging#/runtime/this-firefox` →
+  **Load Temporary Add-on…** (gone after restart; keep it with
+  `npx web-ext sign --source-dir firefox --channel unlisted`).
+- **Chrome / Edge (MV3)** — open `chrome://extensions`, turn on *Developer
+  mode*, click **Load unpacked**, and pick the `chrome/` folder.
 
 ## Usage
 
@@ -33,40 +27,32 @@ A pill sits in the bottom-right of the Machines page:
 | Button | Action |
 | --- | --- |
 | ▦ Grid / ☰ List | toggle card grid ↔ classic table |
-| ⌖ Hide | click an element to hide it; click a device to hide that device (Esc cancels) |
+| ⌖ Hide | hide an element, or a whole device (Esc cancels) |
 | ↺ | show everything you hid |
+| ? | reopen the help card |
 
-Hiding a device removes its card and drops it from the **Online / Offline**
-totals (the count reflects only the devices still shown). The reset button
-brings every hidden device and element back.
+On your first visit a short welcome card explains the buttons, with an optional
+10-second tour. Dismiss it with **Got it**; the `?` brings it back any time.
+Hiding a device drops its card from the **Online / Offline** totals — reset
+brings everything back.
 
-The layout, hidden elements and hidden devices are remembered per-site, and
-saved automatically on every change in `localStorage` under `tsc:settings:v1`
-(`hidden` for picked elements, `hiddenDevices` for whole devices). Nothing else
-is stored or sent anywhere — see [PRIVACY.md](PRIVACY.md).
+Your layout and hidden items are saved per-site in `localStorage`
+(`tsc:settings:v1`) and never leave your browser. See [PRIVACY.md](PRIVACY.md).
 
-## Layout
+## Develop
 
-```
-chrome/   Chrome / Edge extension (Manifest V3)
-firefox/  Firefox extension (Manifest V2)
-test/     mock Machines page + assertion harness
-assets/   store zips, icons, screenshots, banners and listing copy
-```
-
-Run the tests with `node test/serve.mjs`, then open
-<http://localhost:8787/test/harness.html> (`?ext=chrome` or `?ext=firefox`).
-For a headless run of both builds:
+`chrome/` and `firefox/` are the two builds (Manifest V3 / V2), kept
+byte-identical; `test/` holds a mock Machines page and the assertion harness;
+`assets/` has the store zips, icons, screenshots and listing copy.
 
 ```sh
-python3 test/run_harness.py   # needs pip install playwright && playwright install chromium
+node test/serve.mjs           # then open http://localhost:8787/test/harness.html (?ext=chrome|firefox)
+python3 test/run_harness.py   # headless run of both builds (needs: pip install playwright && playwright install chromium)
 ```
 
-CI runs the harness for both builds, `web-ext lint` on Firefox, a privacy
-check (`test/check_privacy.mjs`) and a Chrome/Firefox parity check on every
-push. Tagged `v*` pushes publish the store zips to a GitHub release.
-
-See [ROADMAP.md](ROADMAP.md) for planned improvements.
+CI runs the harness for both builds, `web-ext lint` on Firefox, and the privacy
+/ parity checks; `v*` tags publish the store zips to a GitHub release. See
+[ROADMAP.md](ROADMAP.md) for planned work.
 
 Unofficial project, not affiliated with Tailscale Inc. See
 [PRIVACY.md](PRIVACY.md).

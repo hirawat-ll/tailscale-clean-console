@@ -17,7 +17,13 @@
 
   const STORE_KEY = "tsc:settings:v1";
   const MACHINES_PATH = /^\/admin\/machines\/?$/;
-  const DEFAULT_SETTINGS = Object.freeze({ view: "grid", hidden: [], hiddenDevices: [] });
+  const DEFAULT_SETTINGS = Object.freeze({
+    view: "grid",
+    hidden: [],
+    hiddenDevices: [],
+    onboarded: false,
+    hintShown: false,
+  });
 
   /* ---------------------------------------------------------------- state */
 
@@ -32,6 +38,8 @@
         hiddenDevices: Array.isArray(raw.hiddenDevices)
           ? raw.hiddenDevices.filter((s) => typeof s === "string")
           : [],
+        onboarded: raw.onboarded === true,
+        hintShown: raw.hintShown === true,
       };
     } catch (err) {
       return { ...DEFAULT_SETTINGS, hidden: [], hiddenDevices: [] };
@@ -242,6 +250,12 @@
 
   let pill = null;
   let pickArmed = false;
+  let helpOpen = false;
+  let help = null;
+  let hint = null;
+  let tour = null;
+  let tourTimer = null;
+  let tourStep = 0;
 
   function ensurePill() {
     if (pill && pill.isConnected) {
@@ -255,7 +269,8 @@
     pill.innerHTML =
       '<button type="button" data-act="view"></button>' +
       '<button type="button" data-act="pick" title="Hide: click this, then click an element (or a device card) to remove it"></button>' +
-      '<button type="button" data-act="reset" title="Show everything you have hidden"></button>';
+      '<button type="button" data-act="reset" title="Show everything you have hidden"></button>' +
+      '<button type="button" data-act="help" title="How this works" aria-label="Help">?</button>';
     pill.addEventListener("click", onPillClick, true);
     (document.body || document.documentElement).appendChild(pill);
     renderPill();
@@ -290,6 +305,10 @@
         saveSettings();
         sweep();
         break;
+      case "help":
+        helpOpen = true;
+        syncHelp();
+        break;
     }
     renderPill();
   }
@@ -318,11 +337,252 @@
       : "Nothing hidden";
   }
 
+  /* ------------------------------------------- welcome / help card + hint */
+
+  /* One short line per pill button - no wall of text. */
+  const HELP_LINES = [
+    ["\u25A6 Grid / \u2630 List", "switch between cards and the classic table"],
+    ["\u2316 Hide", "click an element, or a device card, to hide it"],
+    ["\u21BA Reset", "bring back everything you hid"],
+  ];
+
+  function ensureHelp() {
+    if (help && help.isConnected) return;
+
+    help = document.createElement("div");
+    help.id = "tsc-help";
+    help.setAttribute("role", "dialog");
+    help.setAttribute("aria-label", "Tailscale Clean Console help");
+
+    const title = document.createElement("p");
+    title.className = "tsc-help-title";
+    title.textContent = "Tailscale Clean Console";
+
+    const list = document.createElement("ul");
+    list.className = "tsc-help-list";
+    for (const [key, text] of HELP_LINES) {
+      const item = document.createElement("li");
+      item.setAttribute("data-help-line", "");
+      const name = document.createElement("b");
+      name.textContent = key;
+      const desc = document.createElement("span");
+      desc.textContent = text;
+      item.append(name, desc);
+      list.appendChild(item);
+    }
+
+    const actions = document.createElement("div");
+    actions.className = "tsc-help-actions";
+
+    const tourBtn = document.createElement("button");
+    tourBtn.type = "button";
+    tourBtn.dataset.help = "tour";
+    tourBtn.textContent = "10-second tour";
+
+    const dismiss = document.createElement("button");
+    dismiss.type = "button";
+    dismiss.dataset.help = "dismiss";
+    dismiss.textContent = "Got it";
+
+    actions.append(tourBtn, dismiss);
+    help.append(title, list, actions);
+    help.addEventListener("click", onHelpClick);
+    (document.body || document.documentElement).appendChild(help);
+  }
+
+  function onHelpClick(event) {
+    const button = event.target.closest("button[data-help]");
+    if (!button) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (button.dataset.help === "tour") {
+      startTour();
+    } else {
+      /* dismiss: remember it so the welcome card never shows again */
+      settings.onboarded = true;
+      helpOpen = false;
+      saveSettings();
+      syncHelp();
+    }
+  }
+
+  function removeHelp() {
+    if (!help) return;
+    help.remove();
+    help = null;
+  }
+
+  /* The welcome card shows on the first visit; the ? button reopens it. */
+  function syncHelp() {
+    const wanted = onMachinesPage() && !tour && !pickArmed && (helpOpen || !settings.onboarded);
+    if (wanted) ensureHelp();
+    else removeHelp();
+  }
+
+  function ensureHint() {
+    if (hint && hint.isConnected) return;
+    hint = document.createElement("div");
+    hint.id = "tsc-hint";
+    hint.setAttribute("role", "status");
+    hint.textContent = "Click a device card to hide the whole device.";
+    (document.body || document.documentElement).appendChild(hint);
+  }
+
+  function removeHint() {
+    if (!hint) return;
+    hint.remove();
+    hint = null;
+  }
+
+  /* ------------------------------------------------ optional 10-second tour */
+
+  const TOUR_STEPS = [
+    {
+      selector: '#tsc-pill [data-act="view"]',
+      text: "Grid or List \u2014 switch the layout whenever you like.",
+      place: "top",
+    },
+    {
+      selector: "table.tsc-machines tr.tsc-section--online",
+      text: "Online and Offline split the machines, with live counts that follow what you hide.",
+      place: "bottom",
+    },
+  ];
+  const TOUR_STEP_MS = 5000;
+
+  function startTour() {
+    if (tour) return;
+    tourStep = 0;
+
+    tour = document.createElement("div");
+    tour.id = "tsc-tour";
+    tour.setAttribute("role", "dialog");
+    tour.setAttribute("aria-modal", "true");
+    tour.setAttribute("aria-label", "Quick tour");
+    tour.innerHTML =
+      '<div class="tsc-tour-spot" aria-hidden="true"></div>' +
+      '<div class="tsc-tour-card">' +
+      '<p class="tsc-tour-text"></p>' +
+      '<div class="tsc-tour-actions">' +
+      '<span class="tsc-tour-progress"></span>' +
+      '<button type="button" data-tour="skip">Skip</button>' +
+      '<button type="button" data-tour="next">Next</button>' +
+      "</div></div>";
+    tour.addEventListener("click", onTourClick);
+    document.addEventListener("keydown", onTourKey, true);
+    window.addEventListener("resize", placeTour);
+    window.addEventListener("scroll", placeTour, true);
+    (document.body || document.documentElement).appendChild(tour);
+
+    syncHelp();
+    showTourStep(0);
+  }
+
+  function showTourStep(index) {
+    tourStep = index;
+    if (!tour) return;
+    if (index >= TOUR_STEPS.length) {
+      endTour();
+      return;
+    }
+
+    tour.querySelector(".tsc-tour-text").textContent = TOUR_STEPS[index].text;
+    tour.querySelector(".tsc-tour-progress").textContent = index + 1 + " / " + TOUR_STEPS.length;
+    tour.querySelector('[data-tour="next"]').textContent =
+      index === TOUR_STEPS.length - 1 ? "Done" : "Next";
+    placeTour();
+
+    clearTimeout(tourTimer);
+    tourTimer = setTimeout(() => showTourStep(index + 1), TOUR_STEP_MS);
+  }
+
+  function placeTour() {
+    if (!tour) return;
+    const step = TOUR_STEPS[tourStep];
+    if (!step) return;
+
+    const spot = tour.querySelector(".tsc-tour-spot");
+    const card = tour.querySelector(".tsc-tour-card");
+    const target = document.querySelector(step.selector);
+
+    if (!target) {
+      spot.style.display = "none";
+      card.style.display = "none";
+      return;
+    }
+
+    spot.style.display = "block";
+    card.style.display = "block";
+
+    const pad = 6;
+    const rect = target.getBoundingClientRect();
+    spot.style.left = rect.left - pad + "px";
+    spot.style.top = rect.top - pad + "px";
+    spot.style.width = rect.width + pad * 2 + "px";
+    spot.style.height = rect.height + pad * 2 + "px";
+
+    const width = 280;
+    const gap = 14;
+    const left = Math.min(Math.max(12, rect.left + rect.width / 2 - width / 2), window.innerWidth - width - 12);
+
+    let top;
+    if (step.place === "top") {
+      top = rect.top - gap - 122;
+      if (top < 12) top = rect.bottom + gap;
+    } else {
+      top = rect.bottom + gap;
+      if (top + 122 > window.innerHeight) top = Math.max(12, rect.top - gap - 122);
+    }
+
+    card.style.left = left + "px";
+    card.style.top = top + "px";
+    card.style.width = width + "px";
+  }
+
+  function onTourClick(event) {
+    const button = event.target.closest("button[data-tour]");
+    if (button) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (button.dataset.tour === "skip") endTour();
+      else showTourStep(tourStep + 1);
+      return;
+    }
+    /* clicking the dimmed backdrop advances */
+    if (event.target === tour) showTourStep(tourStep + 1);
+  }
+
+  function onTourKey(event) {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    event.stopPropagation();
+    endTour();
+  }
+
+  function endTour() {
+    clearTimeout(tourTimer);
+    tourTimer = null;
+    if (tour) {
+      tour.remove();
+      tour = null;
+    }
+    document.removeEventListener("keydown", onTourKey, true);
+    window.removeEventListener("resize", placeTour);
+    window.removeEventListener("scroll", placeTour, true);
+    syncHelp();
+  }
+
   /* --------------------------------------------------------- element pick */
 
   let highlighted = null;
   let highlightedOutline = "";
   let highlightedOffset = "";
+
+  /* The extension's own floating UI must never be pickable or highlightable. */
+  function isTscUi(el) {
+    return !!(el && el.closest && el.closest("#tsc-pill, #tsc-help, #tsc-hint, #tsc-tour"));
+  }
 
   function setPick(on) {
     if (pickArmed === on) return;
@@ -333,18 +593,26 @@
       document.addEventListener("mousemove", onPickMove, true);
       document.addEventListener("click", onPickClick, true);
       document.addEventListener("keydown", onPickKey, true);
+      /* contextual hint, on the very first Hide only */
+      if (!settings.hintShown) {
+        settings.hintShown = true;
+        saveSettings();
+        ensureHint();
+      }
     } else {
       document.removeEventListener("mousemove", onPickMove, true);
       document.removeEventListener("click", onPickClick, true);
       document.removeEventListener("keydown", onPickKey, true);
       clearHighlight();
+      removeHint();
     }
     renderPill();
+    syncHelp();
   }
 
   function onPickMove(event) {
     const el = document.elementFromPoint(event.clientX, event.clientY);
-    if (!el || el === highlighted || (pill && pill.contains(el))) return;
+    if (!el || el === highlighted || isTscUi(el)) return;
     clearHighlight();
     highlighted = el;
     highlightedOutline = el.style.outline;
@@ -361,12 +629,13 @@
   }
 
   function onPickClick(event) {
-    if (pill && pill.contains(event.target)) return; /* let the pill work */
+    if (isTscUi(event.target)) return; /* let the pill and cards work */
 
     event.preventDefault();
     event.stopPropagation();
 
     const el = document.elementFromPoint(event.clientX, event.clientY) || event.target;
+    if (isTscUi(el)) return;
 
     /* clicking a device (anywhere on its card) hides the whole device, so it
        also drops out of the online/offline totals */
@@ -458,7 +727,10 @@
       ensurePill();
     } else {
       removePill();
+      removeHint();
+      if (tour) endTour();
     }
+    syncHelp();
   }
 
   let scheduled = false;
