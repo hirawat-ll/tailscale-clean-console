@@ -29,12 +29,20 @@ A pill sits in the bottom-right of the Machines page:
 | ▦ Grid / ☰ List | toggle card grid ↔ classic table |
 | ⌖ Hide | hide an element, or a whole device (Esc cancels) |
 | ↺ | show everything you hid |
+| ⚙ | settings: hidden items, default view, export / import |
 | ? | reopen the help card |
 
 On your first visit a short welcome card explains the buttons, with an optional
 10-second tour. Dismiss it with **Got it**; the `?` brings it back any time.
 Hiding a device drops its card from the **Online / Offline** totals — reset
 brings everything back.
+
+The **⚙ Settings** popover lists your hidden devices by name and your hidden
+elements, each with a per-item **Show** and a section **Show all** button, so you
+can restore devices and elements independently. It also lets you pick the
+default view, **Export** / **Import** your settings as JSON, and optionally
+**Sync settings across devices** through your browser's own sync storage
+(off by default; falls back to local storage where unavailable).
 
 Your layout and hidden items are saved per-site in `localStorage`
 (`tsc:settings:v1`) and never leave your browser. See [PRIVACY.md](PRIVACY.md).

@@ -453,6 +453,204 @@ html.dark .tsc-tour-card {
   color: #ffffff;
 }
 
+/* --------------------------------------------------------------------------
+   3c. Settings popover (hidden items, default view, export / import, sync)
+   -------------------------------------------------------------------------- */
+#tsc-settings {
+  position: fixed;
+  right: 16px;
+  bottom: 64px;
+  z-index: 2147482600;
+  width: 300px;
+  max-height: min(72vh, 560px);
+  overflow: auto;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+  color: #191918;
+  font: 500 12px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+html.dark #tsc-settings {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(38, 37, 37, 0.97);
+  color: #ecebea;
+}
+
+.tsc-settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tsc-settings-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tsc-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tsc-settings-label,
+.tsc-settings-subtitle {
+  font-weight: 600;
+}
+
+.tsc-settings-subtitle {
+  font-size: 12px;
+}
+
+.tsc-settings-seg {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid color-mix(in oklab, currentColor 18%, transparent);
+  border-radius: 9px;
+}
+
+#tsc-settings button {
+  all: unset;
+  box-sizing: border-box;
+  padding: 5px 9px;
+  border-radius: 7px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+#tsc-settings button:hover {
+  background: rgba(0, 0, 0, 0.07);
+}
+
+html.dark #tsc-settings button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+#tsc-settings button.is-on {
+  background: #7c3aed;
+  color: #ffffff;
+}
+
+#tsc-settings button[disabled] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+#tsc-settings button[disabled]:hover {
+  background: transparent;
+}
+
+#tsc-settings .tsc-settings-head button {
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.tsc-settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in oklab, currentColor 12%, transparent);
+}
+
+.tsc-settings-subhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tsc-settings-subhead button {
+  border: 1px solid color-mix(in oklab, currentColor 25%, transparent);
+}
+
+.tsc-settings-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tsc-settings-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tsc-settings-item {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+
+.tsc-settings-list button {
+  border: 1px solid color-mix(in oklab, currentColor 25%, transparent);
+  flex: 0 0 auto;
+}
+
+.tsc-settings-sync {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in oklab, currentColor 12%, transparent);
+  cursor: pointer;
+}
+
+.tsc-settings-sync input {
+  margin: 0;
+  accent-color: #7c3aed;
+}
+
+.tsc-settings-sync input[disabled] {
+  cursor: default;
+}
+
+.tsc-settings-note {
+  margin-left: auto;
+  opacity: 0.55;
+  font-size: 11px;
+}
+
+.tsc-settings-io {
+  display: flex;
+  gap: 8px;
+}
+
+.tsc-settings-io button {
+  flex: 1 1 0;
+  text-align: center;
+  border: 1px solid color-mix(in oklab, currentColor 25%, transparent);
+}
+
+.tsc-settings-version {
+  margin: 0;
+  opacity: 0.5;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 /* element-pick mode */
 html.tsc-picking,
 html.tsc-picking * {

@@ -55,7 +55,7 @@ frame.addEventListener('load', async () => {
 
   // first-run welcome / help card
   assert('welcome card shown on first visit', !!d.querySelector('#tsc-help'));
-  assert('welcome card has one line per pill button', d.querySelectorAll('#tsc-help [data-help-line]').length === 3);
+  assert('welcome card has one line per pill button', d.querySelectorAll('#tsc-help [data-help-line]').length === 4);
   d.querySelector('#tsc-help [data-help="dismiss"]').click();
   await wait(300);
   assert('dismiss closes the welcome card', !d.querySelector('#tsc-help'));
@@ -160,6 +160,84 @@ frame.addEventListener('load', async () => {
   assert('help card returns after the tour', !!d.querySelector('#tsc-help'));
   d.querySelector('#tsc-help [data-help="dismiss"]').click();
   await wait(200);
+
+  // settings popover: per-item show, split reset, default view, export / import
+  const firstOnlineAgain = d.querySelector('tr.tsc-online');
+  const devLink2 = firstOnlineAgain.querySelector('.name a') || firstOnlineAgain.querySelector('a');
+  const dname = devLink2.textContent.trim();
+  d.querySelector('#tsc-pill [data-act="pick"]').click();
+  await wait(50);
+  const r2 = devLink2.getBoundingClientRect();
+  const o2 = { bubbles: true, cancelable: true, clientX: r2.left + 2, clientY: r2.top + 2 };
+  devLink2.dispatchEvent(new w.MouseEvent('mousemove', o2));
+  await wait(50);
+  devLink2.dispatchEvent(new w.MouseEvent('click', o2));
+  await wait(300);
+  assert('device hidden again for the settings test', cs(firstOnlineAgain).display === 'none');
+
+  d.querySelector('#tsc-pill [data-act="gear"]').click();
+  await wait(200);
+  const st = d.querySelector('#tsc-settings');
+  assert('gear opens the settings popover', !!st);
+  assert('settings shows the hidden device by name', !!st && st.textContent.includes(dname));
+  assert('hidden device listed with a per-item Show', !!st.querySelector('[data-settings="show-device"]'));
+  assert('split reset: devices section has Show all', !!st.querySelector('[data-section="devices"] [data-settings="reset-devices"]'));
+  assert('split reset: elements section has Show all', !!st.querySelector('[data-section="elements"] [data-settings="reset-elements"]'));
+  assert('sync toggle is present and disabled without browser.storage', (() => { const b = st.querySelector('input[data-settings="sync"]'); return !!b && b.disabled; })());
+  assert('settings offers export and import', !!st.querySelector('[data-settings="export"]') && !!st.querySelector('[data-settings="import"]'));
+  assert('settings shows its schema version', st.textContent.includes('v2'));
+
+  st.querySelector('[data-settings="show-device"]').click();
+  await wait(300);
+  assert('per-item Show restores the device', cs(firstOnlineAgain).display !== 'none');
+  assert('restored device leaves the settings list', !d.querySelector('#tsc-settings [data-settings="show-device"]'));
+
+  d.querySelector('#tsc-settings [data-settings="view-list"]').click();
+  await wait(300);
+  assert('settings can pick the default view (list)', !d.documentElement.classList.contains('tsc-grid'));
+  assert('default view change is saved', JSON.parse(w.localStorage.getItem('tsc:settings:v1') || '{}').view === 'list');
+  d.querySelector('#tsc-settings [data-settings="view-grid"]').click();
+  await wait(300);
+  assert('settings can switch back to the grid', d.documentElement.classList.contains('tsc-grid'));
+
+  // export: capture the blob instead of downloading it
+  let exported = null;
+  const origCreate = w.URL.createObjectURL;
+  const origAnchorClick = w.HTMLAnchorElement.prototype.click;
+  w.URL.createObjectURL = (blob) => { exported = blob; return 'blob:tsc-test'; };
+  w.URL.revokeObjectURL = () => {};
+  w.HTMLAnchorElement.prototype.click = function () {};
+  d.querySelector('#tsc-settings [data-settings="export"]').click();
+  await wait(150);
+  w.URL.createObjectURL = origCreate;
+  w.HTMLAnchorElement.prototype.click = origAnchorClick;
+  assert('export produced a JSON blob', !!exported && exported.type === 'application/json');
+  let exportedJSON = null;
+  try { exportedJSON = JSON.parse(exported ? await exported.text() : ''); } catch (err) {}
+  assert('exported JSON carries the settings shape', !!exportedJSON && exportedJSON.schema === 2 && Array.isArray(exportedJSON.hiddenDevices));
+
+  // import: applies the file, sanitizes fields and prunes stale device keys
+  d.querySelector('#tsc-settings [data-settings="import"]').click();
+  await wait(100);
+  const fileInput = d.querySelector('#tsc-settings-file');
+  assert('import uses a hidden file input', !!fileInput);
+  const payload = JSON.stringify({ schema: 2, view: 'grid', hidden: ['.count'], hiddenDevices: ['id:nodekey02', 'id:ghost-device'], onboarded: true, hintShown: true });
+  const dt = new w.DataTransfer();
+  dt.items.add(new w.File([payload], 'settings.json', { type: 'application/json' }));
+  fileInput.files = dt.files;
+  fileInput.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await wait(400);
+  const afterImport = JSON.parse(w.localStorage.getItem('tsc:settings:v1') || '{}');
+  assert('import applied the hidden element', Array.isArray(afterImport.hidden) && afterImport.hidden.includes('.count'));
+  assert('import pruned the stale device key', Array.isArray(afterImport.hiddenDevices) && afterImport.hiddenDevices.length === 1 && afterImport.hiddenDevices[0] === 'id:nodekey02');
+  assert('imported hidden element is hidden on the page', cs(target).display === 'none');
+  assert('imported hidden device is hidden', cs(d.querySelector('#nodekey02')).display === 'none');
+  assert('import kept the schema version', afterImport.schema === 2);
+
+  d.querySelector('#tsc-settings [data-settings="close"]').click();
+  await wait(200);
+  assert('close button dismisses the settings popover', !d.querySelector('#tsc-settings'));
+  assert('gear loses its active state when settings close', !d.querySelector('#tsc-pill [data-act="gear"]').classList.contains('is-on'));
 
   w.history.pushState({}, '', '/admin/machines/some-detail');
   w.dispatchEvent(new w.PopStateEvent('popstate'));

@@ -39,15 +39,15 @@ extension itself.
 
 ## Settings & hidden state
 
-- [ ] Gear button in the pill opening a small settings popover.
-- [ ] List hidden devices by name with a per-item "show" action (today the only
+- [x] Gear button in the pill opening a small settings popover.
+- [x] List hidden devices by name with a per-item "show" action (today the only
       way back is Reset-all).
-- [ ] Split Reset: "Show hidden devices" vs "Show hidden elements".
-- [ ] Export / import settings as JSON (backup, move between browsers).
-- [ ] Optional cross-device sync via `browser.storage.sync`, falling back to
+- [x] Split Reset: "Show hidden devices" vs "Show hidden elements".
+- [x] Export / import settings as JSON (backup, move between browsers).
+- [x] Optional cross-device sync via `browser.storage.sync`, falling back to
       `localStorage` where unavailable.
-- [ ] Choose the default view (grid or list) from settings.
-- [ ] Add a schema/version check and prune stale `hiddenDevices` keys on load.
+- [x] Choose the default view (grid or list) from settings.
+- [x] Add a schema/version check and prune stale `hiddenDevices` keys on load.
 
 ## Extension experience
 

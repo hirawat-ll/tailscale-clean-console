@@ -22,6 +22,7 @@
       "strict_min_version": "142.0"
     }
   },
+  "permissions": ["storage"],
   "content_scripts": [
     {
       "matches": [
