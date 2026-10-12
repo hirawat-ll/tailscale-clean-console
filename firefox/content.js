@@ -24,7 +24,7 @@
   "use strict";
 
   const STORE_KEY = "tsc:settings:v1";
-  const SCHEMA_VERSION = 3;
+  const SCHEMA_VERSION = 4;
   const MACHINES_PATH = /^\/admin\/machines\/?$/;
   const DEFAULT_SETTINGS = Object.freeze({
     schema: SCHEMA_VERSION,
@@ -36,7 +36,11 @@
     hintShown: false,
     locale: "en",
     pillHidden: false,
+    sort: "status",
+    density: "comfortable",
+    hideOffline: false,
   });
+  const SORT_MODES = ["status", "name", "lastSeen"];
 
   /* --------------------------------------------------------------- i18n */
 
@@ -108,6 +112,24 @@
       "toast.nothingHidden": "Nothing hidden",
       "toast.pillHidden": "Pill hidden - press P to bring it back",
       "toast.pillShown": "Pill shown",
+      "toolbar.aria": "Machines view controls",
+      "toolbar.sort": "Sort",
+      "toolbar.sortStatus": "Status",
+      "toolbar.sortName": "Name",
+      "toolbar.sortLastSeen": "Last seen",
+      "toolbar.density": "Density",
+      "toolbar.densityComfortable": "Comfortable",
+      "toolbar.densityCompact": "Compact",
+      "toolbar.hideOffline": "Hide offline",
+      "toolbar.showOffline": "Show offline",
+      "empty.search": "No machines match \u201C{query}\u201D",
+      "empty.hidden": "{count} device(s) hidden",
+      "empty.showAll": "Show all",
+      "empty.clear": "Clear search",
+      "copy.name": "Copy name",
+      "copy.ip": "Copy IP",
+      "toast.copied": "Copied {what}",
+      "toast.copyFailed": "Couldn't copy",
     },
     es: {
       "pill.label": "Tailscale Clean Console",
@@ -173,6 +195,24 @@
       "toast.nothingHidden": "Nada oculto",
       "toast.pillHidden": "Píldora oculta: pulsa P para recuperarla",
       "toast.pillShown": "Píldora visible",
+      "toolbar.aria": "Controles de la vista de máquinas",
+      "toolbar.sort": "Ordenar",
+      "toolbar.sortStatus": "Estado",
+      "toolbar.sortName": "Nombre",
+      "toolbar.sortLastSeen": "Vista por última vez",
+      "toolbar.density": "Densidad",
+      "toolbar.densityComfortable": "Cómoda",
+      "toolbar.densityCompact": "Compacta",
+      "toolbar.hideOffline": "Ocultar desconectados",
+      "toolbar.showOffline": "Mostrar desconectados",
+      "empty.search": "Ninguna máquina coincide con \u201C{query}\u201D",
+      "empty.hidden": "{count} dispositivo(s) oculto(s)",
+      "empty.showAll": "Mostrar todo",
+      "empty.clear": "Borrar búsqueda",
+      "copy.name": "Copiar nombre",
+      "copy.ip": "Copiar IP",
+      "toast.copied": "Copiado {what}",
+      "toast.copyFailed": "No se pudo copiar",
     },
   };
 
@@ -216,6 +256,9 @@
       hintShown: source.hintShown === true,
       locale: typeof source.locale === "string" && MESSAGES[source.locale] ? source.locale : "en",
       pillHidden: source.pillHidden === true,
+      sort: SORT_MODES.includes(source.sort) ? source.sort : "status",
+      density: source.density === "compact" ? "compact" : "comfortable",
+      hideOffline: source.hideOffline === true,
     };
   }
 
@@ -421,6 +464,12 @@
 
     let online = 0;
     let offline = 0;
+    let hidden = 0;
+    let visible = 0;
+    const query = searchQuery.trim().toLowerCase();
+    const onlineRows = [];
+    const offlineRows = [];
+    const meta = new Map();
 
     for (const row of table.querySelectorAll("tbody tr")) {
       if (row.classList.contains("tsc-section")) continue;
@@ -432,9 +481,6 @@
         if (!row.classList.contains("tsc-empty")) row.classList.add("tsc-empty");
         continue;
       }
-
-      /* the user hid this device: keep it out of the online/offline totals */
-      if (row.classList.contains("tsc-device-hidden")) continue;
 
       cells.forEach((td, i) => {
         const isFirst = i === 0;
@@ -454,14 +500,472 @@
         }
       });
 
+      ensureRowCopy(row);
+
       const isOnline = lastSeenIndex >= 0 && cellIsOnline(cells[lastSeenIndex]);
       row.classList.toggle("tsc-online", isOnline);
       row.classList.toggle("tsc-offline", !isOnline);
+
+      /* mirror the console's search: filter the cards and drop the misses from
+         the Online / Offline totals (the console's own filter may not survive
+         the grid restyle) */
+      const matches = !query || rowMatchesQuery(row, query);
+      row.classList.toggle("tsc-filtered", !matches);
+
+      /* a stable "as Tailscale listed it" index, so the Status sort can put the
+         rows back the way they arrived */
+      if (!row.dataset.tscSeq) row.dataset.tscSeq = String(seqCounter++);
+      meta.set(row, {
+        name: deviceSortName(row),
+        recent: isOnline ? Number.MAX_SAFE_INTEGER : lastSeenTime(cells[lastSeenIndex]),
+        seq: Number(row.dataset.tscSeq),
+      });
+
+      if (isOnline) onlineRows.push(row);
+      else offlineRows.push(row);
+
+      if (row.classList.contains("tsc-device-hidden")) {
+        hidden++;
+        continue;
+      }
+      if (!matches) continue;
       if (isOnline) online++;
       else offline++;
+      visible++;
     }
 
+    sortRowList(onlineRows, meta);
+    sortRowList(offlineRows, meta);
+
     syncSections(table, online, offline);
+    reorderRows(table, onlineRows, offlineRows);
+    updateMachineCount(table);
+    syncEmptyState(table, { visible, hidden, query });
+  }
+
+  /* Whether a device card contains the console's search text (name, tag, owner,
+     IP, version - anything Tailscale rendered into the row). */
+  function rowMatchesQuery(row, query) {
+    return ((row.textContent || "") + "").toLowerCase().includes(query);
+  }
+
+  /* The machine name in a row, lowercased, for the Name sort. */
+  function deviceSortName(row) {
+    const cell = row.querySelector("td.tsc-title") || row.querySelector("td");
+    const link = (cell && cell.querySelector("a[href]")) || row.querySelector("td a[href]");
+    const text = ((link ? link.textContent : (cell || row).textContent) || "").trim();
+    return (text.split("\n")[0] || "").toLowerCase();
+  }
+
+  function lastSeenTime(cell) {
+    if (!cell) return 0;
+    const text = (cell.textContent || "").replace(/\s+/g, " ").trim();
+    const time = Date.parse(text);
+    return Number.isNaN(time) ? 0 : time;
+  }
+
+  /* Sort a group of rows according to the current sort preference, falling back
+     to Tailscale's own order so the sort is stable. */
+  function sortRowList(list, meta) {
+    const mode = settings.sort;
+    if (mode === "name") {
+      list.sort((a, b) => meta.get(a).name.localeCompare(meta.get(b).name) || meta.get(a).seq - meta.get(b).seq);
+    } else if (mode === "lastSeen") {
+      list.sort((a, b) => meta.get(b).recent - meta.get(a).recent || meta.get(a).seq - meta.get(b).seq);
+    } else {
+      list.sort((a, b) => meta.get(a).seq - meta.get(b).seq);
+    }
+  }
+
+  /* Put the tbody back in visual order: online header, online cards, offline
+     header, offline cards. Only touches the DOM when the order actually
+     changed, so the MutationObserver does not loop. */
+  function reorderRows(table, onlineRows, offlineRows) {
+    const tbody = table.querySelector("tbody");
+    if (!tbody) return;
+
+    const desired = [];
+    const onlineHeader = table.querySelector("tr.tsc-section--online");
+    const offlineHeader = table.querySelector("tr.tsc-section--offline");
+    if (onlineHeader) desired.push(onlineHeader);
+    desired.push(...onlineRows);
+    if (offlineHeader) desired.push(offlineHeader);
+    desired.push(...offlineRows);
+
+    const current = Array.from(tbody.children);
+    const inDesired = new Set(desired);
+    const final = desired.concat(current.filter((node) => !inDesired.has(node)));
+
+    let same = final.length === current.length;
+    if (same) {
+      for (let i = 0; i < final.length; i++) {
+        if (final[i] !== current[i]) {
+          same = false;
+          break;
+        }
+      }
+    }
+    if (!same) for (const node of final) tbody.appendChild(node);
+  }
+
+  /* ------------------------------------------------ sort, toolbar, search */
+
+  let seqCounter = 1;
+  let searchQuery = "";
+  let toolbar = null;
+  let toolbarSort = null;
+  let toolbarDensity = null;
+  let toolbarOffline = null;
+
+  /* The console has its own search box; we do not add a second one. We watch
+     that input so the Online / Offline counts follow its filtering. */
+  let pageSearch = null;
+
+  function findPageSearchInput() {
+    const inputs = document.querySelectorAll('input[type="search"], input[type="text"], input:not([type])');
+    for (const input of inputs) {
+      if (isTscUi(input) || input.disabled || input.readOnly) continue;
+      const hint = (
+        (input.getAttribute("placeholder") || "") +
+        " " +
+        (input.getAttribute("aria-label") || "") +
+        " " +
+        (input.getAttribute("name") || "") +
+        " " +
+        (input.id || "")
+      ).toLowerCase();
+      if (/search|filter/.test(hint)) return input;
+    }
+    return null;
+  }
+
+  function watchPageSearch() {
+    const input = onMachinesPage() ? findPageSearchInput() : null;
+    if (input === pageSearch) return;
+    if (pageSearch) pageSearch.removeEventListener("input", onPageSearchChanged);
+    pageSearch = input;
+    if (pageSearch) {
+      searchQuery = pageSearch.value;
+      pageSearch.addEventListener("input", onPageSearchChanged);
+    }
+  }
+
+  function onPageSearchChanged() {
+    searchQuery = pageSearch ? pageSearch.value : "";
+    schedule();
+  }
+
+  function applyDensity() {
+    const compact = onMachinesPage() && settings.density === "compact";
+    document.documentElement.classList.toggle("tsc-compact", compact);
+  }
+
+  function applyHideOffline() {
+    const hide = onMachinesPage() && settings.hideOffline === true;
+    document.documentElement.classList.toggle("tsc-hide-offline", hide);
+  }
+
+  function createToolbar() {
+    const el = document.createElement("div");
+    el.id = "tsc-toolbar";
+    el.setAttribute("role", "toolbar");
+
+    const sort = document.createElement("select");
+    sort.className = "tsc-sort";
+    sort.dataset.tsc = "sort";
+    for (const [value, key] of [
+      ["status", "toolbar.sortStatus"],
+      ["name", "toolbar.sortName"],
+      ["lastSeen", "toolbar.sortLastSeen"],
+    ]) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.dataset.key = key;
+      option.textContent = t(key);
+      sort.appendChild(option);
+    }
+    sort.addEventListener("change", () => {
+      settings.sort = SORT_MODES.includes(sort.value) ? sort.value : "status";
+      saveSettings();
+      sweep();
+    });
+
+    const density = document.createElement("button");
+    density.type = "button";
+    density.dataset.tsc = "density";
+    density.addEventListener("click", () => {
+      settings.density = settings.density === "compact" ? "comfortable" : "compact";
+      saveSettings();
+      sweep();
+    });
+
+    const offline = document.createElement("button");
+    offline.type = "button";
+    offline.dataset.tsc = "offline";
+    offline.addEventListener("click", () => {
+      settings.hideOffline = settings.hideOffline !== true;
+      saveSettings();
+      sweep();
+    });
+
+    el.append(sort, density, offline);
+    toolbarSort = sort;
+    toolbarDensity = density;
+    toolbarOffline = offline;
+    return el;
+  }
+
+  function ensureToolbar(table) {
+    if (!table) {
+      removeToolbar();
+      return;
+    }
+    if (!toolbar || !toolbar.isConnected) toolbar = createToolbar();
+    if (toolbar.parentElement !== table.parentElement || toolbar.nextElementSibling !== table) {
+      table.parentElement.insertBefore(toolbar, table);
+    }
+    renderToolbar();
+  }
+
+  function removeToolbar() {
+    if (toolbar) {
+      toolbar.remove();
+      toolbar = null;
+    }
+    toolbarSort = null;
+    toolbarDensity = null;
+    toolbarOffline = null;
+  }
+
+  function renderToolbar() {
+    if (!toolbar) return;
+    toolbar.setAttribute("aria-label", t("toolbar.aria"));
+
+    if (toolbarSort) {
+      const sortLabel = t("toolbar.sort");
+      if (toolbarSort.getAttribute("aria-label") !== sortLabel) toolbarSort.setAttribute("aria-label", sortLabel);
+      for (const option of toolbarSort.options) {
+        const text = t(option.dataset.key);
+        if (option.textContent !== text) option.textContent = text;
+      }
+      if (toolbarSort.value !== settings.sort) toolbarSort.value = settings.sort;
+    }
+
+    if (toolbarDensity) {
+      const compact = settings.density === "compact";
+      const text = t(compact ? "toolbar.densityCompact" : "toolbar.densityComfortable");
+      if (toolbarDensity.textContent !== text) toolbarDensity.textContent = text;
+      toolbarDensity.setAttribute("aria-pressed", String(compact));
+      const densityLabel = t("toolbar.density");
+      if (toolbarDensity.getAttribute("aria-label") !== densityLabel) toolbarDensity.setAttribute("aria-label", densityLabel);
+    }
+
+    if (toolbarOffline) {
+      const hid = settings.hideOffline === true;
+      const text = t(hid ? "toolbar.showOffline" : "toolbar.hideOffline");
+      if (toolbarOffline.textContent !== text) toolbarOffline.textContent = text;
+      toolbarOffline.setAttribute("aria-pressed", String(hid));
+    }
+  }
+
+  /* --------------------------------------------- copy name / IP from cards */
+
+  function deviceIp(row) {
+    const cells = row.querySelectorAll("td.tsc-omit");
+    for (const cell of cells) {
+      const v4 = (cell.textContent || "").match(/\b\d{1,3}(?:\.\d{1,3}){3}\b/);
+      if (v4) return v4[0];
+    }
+    for (const cell of cells) {
+      const text = (cell.textContent || "").replace(/\s+/g, " ").trim();
+      if (text) return text.split(" ")[0];
+    }
+    return "";
+  }
+
+  function ensureRowCopy(row) {
+    let wrap = row.querySelector(":scope > .tsc-copy");
+    if (!wrap) {
+      wrap = document.createElement("div");
+      wrap.className = "tsc-copy";
+      for (const kind of ["name", "ip"]) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.copy = kind;
+        wrap.appendChild(button);
+      }
+      row.appendChild(wrap);
+    }
+
+    const nameLabel = t("copy.name");
+    const ipLabel = t("copy.ip");
+    const nameBtn = wrap.querySelector('[data-copy="name"]');
+    if (nameBtn.getAttribute("aria-label") !== nameLabel) {
+      nameBtn.setAttribute("aria-label", nameLabel);
+      nameBtn.title = nameLabel;
+    }
+    const ipBtn = wrap.querySelector('[data-copy="ip"]');
+    if (ipBtn.getAttribute("aria-label") !== ipLabel) {
+      ipBtn.setAttribute("aria-label", ipLabel);
+      ipBtn.title = ipLabel;
+    }
+    const hasIp = !!deviceIp(row);
+    if (ipBtn.hidden === hasIp) ipBtn.hidden = !hasIp;
+  }
+
+  function copyFromRow(row, kind) {
+    if (!row) return;
+    const value = kind === "ip" ? deviceIp(row) : deviceDisplayName(row);
+    if (!value) {
+      showToast(t("toast.copyFailed"));
+      return;
+    }
+    copyText(value, kind === "ip" ? "IP" : value);
+  }
+
+  function copyText(text, label) {
+    const done = () => showToast(t("toast.copied", { what: label }));
+    const fail = () => showToast(t("toast.copyFailed"));
+    const fallback = () => {
+      try {
+        const area = document.createElement("textarea");
+        area.value = text;
+        area.setAttribute("readonly", "");
+        area.style.position = "fixed";
+        area.style.top = "-1000px";
+        area.style.opacity = "0";
+        (document.body || document.documentElement).appendChild(area);
+        area.select();
+        const ok = document.execCommand("copy");
+        area.remove();
+        if (ok) done();
+        else fail();
+      } catch (err) {
+        fail();
+      }
+    };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, fallback);
+        return;
+      }
+    } catch (err) {
+      /* fall through to the legacy path */
+    }
+    fallback();
+  }
+
+  /* Clicks on our injected card/toolbar controls. Never in pick mode: there the
+     picker owns the page and returns early for our UI anyway. */
+  function onInjectedClick(event) {
+    const target = event.target;
+    if (!target || !target.closest || pickArmed) return;
+
+    const copyBtn = target.closest(".tsc-copy button[data-copy]");
+    if (copyBtn) {
+      event.preventDefault();
+      event.stopPropagation();
+      copyFromRow(copyBtn.closest("tr"), copyBtn.dataset.copy);
+      return;
+    }
+
+    const action = target.closest(".tsc-empty-action");
+    if (action) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (action.dataset.tsc === "clear") {
+        searchQuery = "";
+        if (pageSearch) {
+          pageSearch.value = "";
+          pageSearch.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+        schedule();
+      } else {
+        settings.hiddenDevices = [];
+        afterChange();
+      }
+    }
+  }
+
+  /* ------------------------------- Tailscale's own "N machines" count sync */
+
+  function findMachineCountEl() {
+    const direct = document.querySelector(".count");
+    if (direct && /\d[\d,]*\s+machines?/i.test(direct.textContent)) return direct;
+    for (const el of document.querySelectorAll("main p, main span, main div, .page p, .page span, .page div")) {
+      if (el.children.length || isTscUi(el)) continue;
+      if (/^\s*\d[\d,]*\s+machines?\s*$/i.test(el.textContent)) return el;
+    }
+    return null;
+  }
+
+  function updateMachineCount(table) {
+    const el = findMachineCountEl();
+    if (!el) return;
+    const hidden = table.querySelectorAll("tr.tsc-device-hidden").length;
+
+    const current = el.textContent;
+    /* if the page changed the text itself, treat it as the new template */
+    if (current !== el.dataset.tscLast) el.dataset.tscTemplate = current;
+    const template = el.dataset.tscTemplate || current;
+    const match = template.match(/\d[\d,]*/);
+    if (!match) return;
+
+    /* subtract from the count the page already shows, so Tailscale's own
+       search/filtering does not throw our number off */
+    const base = Number(match[0].replace(/,/g, ""));
+    const shown = Math.max(0, base - hidden);
+    const next = template.replace(/\d[\d,]*/, String(shown));
+    el.dataset.tscLast = next;
+    if (current !== next) el.textContent = next;
+  }
+
+  /* ------------------------------- empty state (all hidden / no matches) */
+
+  function syncEmptyState(table, state) {
+    const tbody = table.querySelector("tbody");
+    if (!tbody) return;
+
+    const noMatches = !!state.query && state.visible === 0;
+    const allHidden = !state.query && state.visible === 0 && state.hidden > 0;
+    let row = table.querySelector("tr.tsc-empty-state");
+
+    if (!noMatches && !allHidden) {
+      if (row) row.remove();
+      return;
+    }
+
+    if (!row) {
+      row = document.createElement("tr");
+      row.className = "tsc-empty-state";
+      row.appendChild(document.createElement("td"));
+    }
+    if (row.parentElement !== tbody) tbody.appendChild(row);
+
+    const cell = row.firstElementChild;
+    const message = noMatches
+      ? t("empty.search", { query: searchQuery.trim() })
+      : t("empty.hidden", { count: state.hidden });
+
+    let text = row.querySelector(".tsc-empty-text");
+    if (!text) {
+      text = document.createElement("span");
+      text.className = "tsc-empty-text";
+      cell.appendChild(text);
+    }
+    if (text.textContent !== message) text.textContent = message;
+
+    const action = noMatches ? "clear" : "show-all";
+    let button = row.querySelector(".tsc-empty-action");
+    if (!button) {
+      button = document.createElement("button");
+      button.type = "button";
+      button.className = "tsc-empty-action";
+      cell.appendChild(button);
+    }
+    if (button.dataset.tsc !== action) button.dataset.tsc = action;
+    const buttonText = t(noMatches ? "empty.clear" : "empty.showAll");
+    if (button.textContent !== buttonText) button.textContent = buttonText;
   }
 
   /* A machine is online when its "Last seen" cell renders the green status dot
@@ -701,11 +1205,32 @@
 
   /* Run a pill action, whichever way it was triggered (click or shortcut). */
   function toggleView() {
-    settings.view = settings.view === "grid" ? "list" : "grid";
-    saveSettings();
-    sweep();
+    keepScroll(() => {
+      settings.view = settings.view === "grid" ? "list" : "grid";
+      saveSettings();
+      sweep();
+    });
     if (settingsOpen) renderSettings();
     renderPill();
+  }
+
+  /* Grid and list have very different heights; hold the user's place across the
+     toggle by putting the scroll offset back once the new layout is in. */
+  function keepScroll(fn) {
+    const y = window.scrollY || window.pageYOffset || 0;
+    fn();
+    try {
+      window.scrollTo(0, y);
+    } catch (err) {
+      /* ignore */
+    }
+    requestAnimationFrame(() => {
+      try {
+        window.scrollTo(0, y);
+      } catch (err) {
+        /* ignore */
+      }
+    });
   }
 
   function resetHidden() {
@@ -1047,7 +1572,7 @@
 
   /* --------------------------------------------------------- settings pop */
 
-  const SETTING_KEYS = ["schema", "view", "hidden", "hiddenDevices", "sync", "onboarded", "hintShown", "locale", "pillHidden"];
+  const SETTING_KEYS = ["schema", "view", "hidden", "hiddenDevices", "sync", "onboarded", "hintShown", "locale", "pillHidden", "sort", "density", "hideOffline"];
 
   function toggleSettings() {
     if (settingsOpen) closeSettings();
@@ -1293,9 +1818,11 @@
   }
 
   function setView(view) {
-    settings.view = view === "list" ? "list" : "grid";
-    saveSettings();
-    sweep();
+    keepScroll(() => {
+      settings.view = view === "list" ? "list" : "grid";
+      saveSettings();
+      sweep();
+    });
     renderSettings();
   }
 
@@ -1416,7 +1943,9 @@
     return !!(
       el &&
       el.closest &&
-      el.closest("#tsc-pill, #tsc-help, #tsc-settings, #tsc-settings-file, #tsc-hint, #tsc-tour, #tsc-toast")
+      el.closest(
+        "#tsc-pill, #tsc-help, #tsc-settings, #tsc-settings-file, #tsc-hint, #tsc-tour, #tsc-toast, #tsc-toolbar, .tsc-copy, .tsc-empty-state"
+      )
     );
   }
 
@@ -1668,6 +2197,7 @@
 
   function sweep() {
     applyHidden();
+    watchPageSearch();
 
     const table = onMachinesPage() ? findMachinesTable() : null;
     if (table) {
@@ -1676,10 +2206,19 @@
     }
 
     const grid = applyGrid();
+    applyDensity();
+    applyHideOffline();
     if (onMachinesPage()) {
-      if (grid) markTable();
+      if (grid) {
+        ensureToolbar(table);
+        markTable();
+      } else {
+        removeToolbar();
+        if (table) updateMachineCount(table);
+      }
       ensurePill();
     } else {
+      removeToolbar();
       removePill();
       removeHint();
       if (tour) endTour();
@@ -1701,6 +2240,7 @@
   }
 
   document.addEventListener("keydown", onGlobalKey, true);
+  document.addEventListener("click", onInjectedClick, true);
   sweep();
   hydrateFromSync();
   new MutationObserver(schedule).observe(document.documentElement, {

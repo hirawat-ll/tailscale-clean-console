@@ -25,6 +25,12 @@ extension itself.
 - Store assets consolidated: both builds share a single `assets/screenshots/`
   folder (README + store shots) instead of duplicated per-store copies, and the
   Firefox listing links to the live AMO page.
+- Grid & machines UX: the console's own search box driving live
+  Online / Offline counts, a sort menu (status / name / last seen), a compact
+  density toggle, an offline collapse toggle, copy-name / copy-IP buttons on
+  each card, Tailscale's own "N machines" count kept in sync with hidden
+  devices, an "N devices hidden — Show all" empty state, and the scroll
+  position kept across grid/list toggles.
 
 ## Onboarding & first-run
 
@@ -63,15 +69,15 @@ extension itself.
 
 ## Grid & machines UX
 
-- [ ] Search/filter box in the grid that also updates the Online / Offline
-      counts.
-- [ ] Sort menu (name, last seen, status).
-- [ ] Collapse the Offline section, or hide offline devices by default.
-- [ ] Keep Tailscale's own "N machines" count in sync with hidden devices.
-- [ ] Compact / density toggle.
-- [ ] Copy machine name or IP straight from the card.
-- [ ] Empty state when everything is hidden: "3 devices hidden — Show all".
-- [ ] Remember scroll position across grid/list toggles.
+- [x] The console's own search/filter drives the grid and updates the
+      Online / Offline counts (no duplicate box).
+- [x] Sort menu (name, last seen, status).
+- [x] Collapse the Offline section, or hide offline devices by default.
+- [x] Keep Tailscale's own "N machines" count in sync with hidden devices.
+- [x] Compact / density toggle.
+- [x] Copy machine name or IP straight from the card.
+- [x] Empty state when everything is hidden: "3 devices hidden — Show all".
+- [x] Remember scroll position across grid/list toggles.
 
 ## Robustness & performance
 

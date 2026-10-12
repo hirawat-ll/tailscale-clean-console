@@ -41,6 +41,15 @@ Every hide and reset shows a short toast, and a hide offers **Undo** (the last
 one is also on `Cmd/Ctrl+Z`). Keyboard shortcuts: `g` grid/list, `h` hide,
 `r` reset, `p` show/hide the pill, `Esc` cancel.
 
+Above the grid sits a small toolbar with a **sort** menu (status, name, last
+seen), a **density** toggle (comfortable / compact) and a **Hide offline**
+toggle. The console's own search box drives the grid: typing in it filters the
+cards and updates the **Online / Offline** counts, and a matchless search gets a
+**Clear search** action. Each card also gets quiet **Name** / **IP** copy
+buttons. Tailscale's own "N machines" line follows your hidden devices, and
+hiding everything brings up an "N devices hidden — Show all" action. Your scroll
+position is kept when you flip between grid and list.
+
 The **⚙ Settings** popover lists your hidden devices by name and your hidden
 elements, each with a per-item **Show** and a section **Show all** button, so you
 can restore devices and elements independently. It also lets you pick the

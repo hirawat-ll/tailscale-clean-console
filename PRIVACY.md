@@ -14,9 +14,11 @@ entirely on your computer and does not collect, transmit, or sell any data.
 
 ## What it stores
 
-Your layout choice (`view`), the elements you hid (`hidden`), the devices you
-hid (`hiddenDevices`), your interface language (`locale`), whether the floating
-pill is hidden (`pillHidden`), and three small first-run / preference flags —
+Your layout choice (`view`), the machines sort order (`sort`), the card density
+(`density`), whether offline machines are collapsed (`hideOffline`), the
+elements you hid (`hidden`), the devices you hid (`hiddenDevices`), your
+interface language (`locale`), whether the floating pill is hidden
+(`pillHidden`), and three small first-run / preference flags —
 whether you have already seen the welcome card (`onboarded`), the one-time hide
 hint (`hintShown`), and whether cross-device sync is on (`sync`) — are saved in
 your browser's **local storage for the Tailscale site** (`localStorage` key

@@ -760,6 +760,174 @@ html.dark #tsc-settings button:hover {
   text-transform: uppercase;
 }
 
+/* --------------------------------------------------------------------------
+   3d. Grid toolbar: sort, density and the offline toggle
+   -------------------------------------------------------------------------- */
+#tsc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in oklab, currentColor 15%, transparent);
+  border-radius: 10px;
+  background: color-mix(in oklab, currentColor 3%, transparent);
+  color: inherit;
+  font: 500 12px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+#tsc-toolbar select,
+#tsc-toolbar button {
+  all: unset;
+  box-sizing: border-box;
+  padding: 6px 9px;
+  border: 1px solid color-mix(in oklab, currentColor 20%, transparent);
+  border-radius: 8px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+#tsc-toolbar button:hover,
+#tsc-toolbar select:hover {
+  border-color: color-mix(in oklab, currentColor 40%, transparent);
+}
+
+#tsc-toolbar button[aria-pressed="true"] {
+  background: #7c3aed;
+  border-color: #7c3aed;
+  color: #ffffff;
+}
+
+#tsc-toolbar button:focus-visible,
+#tsc-toolbar select:focus-visible {
+  outline: 2px solid #7c3aed;
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   3e. Compact density, hidden offline section, filtered cards, copy buttons
+       and the "everything hidden" empty state
+   -------------------------------------------------------------------------- */
+html.tsc-grid.tsc-compact table.tsc-machines tbody {
+  gap: 8px;
+}
+
+html.tsc-grid.tsc-compact table.tsc-machines tbody tr {
+  gap: 3px;
+  padding: 8px 12px;
+  border-radius: 9px;
+}
+
+html.tsc-grid.tsc-hide-offline table.tsc-machines tbody tr.tsc-section--offline,
+html.tsc-grid.tsc-hide-offline table.tsc-machines tbody tr.tsc-offline {
+  display: none !important;
+}
+
+/* cards the console's search filtered out */
+html.tsc-grid table.tsc-machines tbody tr.tsc-filtered {
+  display: none !important;
+}
+
+/* copy name / IP buttons: a quiet corner affordance on each card */
+.tsc-copy {
+  position: absolute;
+  right: 10px;
+  bottom: 9px;
+  display: flex;
+  gap: 4px;
+  opacity: 0.4;
+  transition: opacity 120ms ease;
+}
+
+html.tsc-grid table.tsc-machines tbody tr:hover .tsc-copy,
+.tsc-copy:focus-within {
+  opacity: 1;
+}
+
+html:not(.tsc-grid) .tsc-copy {
+  display: none !important;
+}
+
+.tsc-copy button {
+  all: unset;
+  box-sizing: border-box;
+  min-width: 22px;
+  padding: 3px 7px;
+  border: 1px solid color-mix(in oklab, currentColor 22%, transparent);
+  border-radius: 7px;
+  cursor: pointer;
+  color: inherit;
+  font: 600 10px/1 system-ui, -apple-system, "Segoe UI", sans-serif;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.tsc-copy button:hover {
+  border-color: color-mix(in oklab, currentColor 45%, transparent);
+}
+
+.tsc-copy button:focus-visible {
+  outline: 2px solid #7c3aed;
+  outline-offset: 2px;
+}
+
+.tsc-copy button[data-copy="name"]::before {
+  content: "\29C9 Name";
+}
+
+.tsc-copy button[data-copy="ip"]::before {
+  content: "\29C9 IP";
+}
+
+/* all hidden / no search matches: a full-width message with one action */
+html.tsc-grid table.tsc-machines tbody tr.tsc-empty-state {
+  grid-column: 1 / -1;
+  align-items: center;
+  padding: 14px 2px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+html.tsc-grid table.tsc-machines tbody tr.tsc-empty-state td {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tsc-empty-text {
+  opacity: 0.75;
+}
+
+.tsc-empty-action {
+  all: unset;
+  box-sizing: border-box;
+  padding: 5px 11px;
+  border: 1px solid color-mix(in oklab, currentColor 25%, transparent);
+  border-radius: 8px;
+  cursor: pointer;
+  color: inherit;
+  font: 600 12px/1 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.tsc-empty-action:hover {
+  border-color: color-mix(in oklab, currentColor 45%, transparent);
+}
+
+.tsc-empty-action:focus-visible {
+  outline: 2px solid #7c3aed;
+  outline-offset: 2px;
+}
+
+html:not(.tsc-grid) table.tsc-machines tbody tr.tsc-empty-state {
+  display: none !important;
+}
+
 /* element-pick mode */
 html.tsc-picking,
 html.tsc-picking * {
@@ -772,7 +940,8 @@ html.tsc-picking * {
 @media (prefers-reduced-motion: reduce) {
   html.tsc-grid table.tsc-machines tbody tr,
   #tsc-toast,
-  .tsc-tour-spot {
+  .tsc-tour-spot,
+  .tsc-copy {
     transition: none;
   }
 }

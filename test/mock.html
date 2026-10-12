@@ -114,6 +114,7 @@
   .tb tr > :not(template) ~ :not(template) { padding-left: .25rem; padding-right: .25rem; }
   .tb td, .tb th { flex-shrink: 0; padding-top: .55rem; padding-bottom: .55rem; }
   .tb tbody tr:hover { background: var(--hover); }
+  .tb tbody tr.search-hidden { display: none; }
 
   .w-0 { width: 0; }
   .flex-auto { flex: 1 1 auto; }
@@ -326,5 +327,16 @@
 </main>
 
 <script src="/firefox/content.js"></script>
+<script>
+  /* The real console filters the machines table as you type. Mirror that here
+     so the fixture behaves like the page the extension runs on. */
+  const searchBox = document.querySelector('.toolbar input');
+  searchBox.addEventListener('input', () => {
+    const q = searchBox.value.trim().toLowerCase();
+    for (const row of document.querySelectorAll('table.tb tbody tr')) {
+      row.classList.toggle('search-hidden', !!q && !row.textContent.toLowerCase().includes(q));
+    }
+  });
+</script>
 </body>
 </html>

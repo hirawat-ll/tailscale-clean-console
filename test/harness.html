@@ -185,7 +185,7 @@ frame.addEventListener('load', async () => {
   assert('split reset: elements section has Show all', !!st.querySelector('[data-section="elements"] [data-settings="reset-elements"]'));
   assert('sync toggle is present and disabled without browser.storage', (() => { const b = st.querySelector('input[data-settings="sync"]'); return !!b && b.disabled; })());
   assert('settings offers export and import', !!st.querySelector('[data-settings="export"]') && !!st.querySelector('[data-settings="import"]'));
-  assert('settings shows its schema version', st.textContent.includes('v3'));
+  assert('settings shows its schema version', st.textContent.includes('v4'));
 
   st.querySelector('[data-settings="show-device"]').click();
   await wait(300);
@@ -214,7 +214,7 @@ frame.addEventListener('load', async () => {
   assert('export produced a JSON blob', !!exported && exported.type === 'application/json');
   let exportedJSON = null;
   try { exportedJSON = JSON.parse(exported ? await exported.text() : ''); } catch (err) {}
-  assert('exported JSON carries the settings shape', !!exportedJSON && exportedJSON.schema === 3 && Array.isArray(exportedJSON.hiddenDevices));
+  assert('exported JSON carries the settings shape', !!exportedJSON && exportedJSON.schema === 4 && Array.isArray(exportedJSON.hiddenDevices));
 
   // import: applies the file, sanitizes fields and prunes stale device keys
   d.querySelector('#tsc-settings [data-settings="import"]').click();
@@ -232,7 +232,7 @@ frame.addEventListener('load', async () => {
   assert('import pruned the stale device key', Array.isArray(afterImport.hiddenDevices) && afterImport.hiddenDevices.length === 1 && afterImport.hiddenDevices[0] === 'id:nodekey02');
   assert('imported hidden element is hidden on the page', cs(target).display === 'none');
   assert('imported hidden device is hidden', cs(d.querySelector('#nodekey02')).display === 'none');
-  assert('import kept the schema version', afterImport.schema === 3);
+  assert('import kept the schema version', afterImport.schema === 4);
 
   d.querySelector('#tsc-settings [data-settings="close"]').click();
   await wait(200);
@@ -345,6 +345,117 @@ frame.addEventListener('load', async () => {
   await wait(300);
   assert('locale switches back to English', d.querySelector('#tsc-pill [data-act="view"]').textContent.includes('Grid'));
   d.querySelector('#tsc-settings [data-settings="close"]').click();
+  await wait(200);
+
+  // grid toolbar: sort/density/offline (the console keeps its own search box)
+  const bar = d.querySelector('#tsc-toolbar');
+  assert('grid shows the machines toolbar', !!bar);
+  assert('toolbar does not duplicate the console search', !!bar && !bar.querySelector('input'));
+  assert('toolbar has a sort menu', !!bar && !!bar.querySelector('[data-tsc="sort"]'));
+  assert('toolbar has a density toggle', !!bar && !!bar.querySelector('[data-tsc="density"]'));
+  assert('toolbar has an offline toggle', !!bar && !!bar.querySelector('[data-tsc="offline"]'));
+
+  // Tailscale's own "N machines" count is present to keep in sync
+  assert('tailscale machine count present', /8 machines/.test((d.querySelector('.count') || {}).textContent || ''));
+
+  // the console's own search drives the Online / Offline counts
+  const pageSearch = d.querySelector('.toolbar input');
+  assert('console search box is reused, not replaced', !!pageSearch);
+  pageSearch.value = 'studio';
+  pageSearch.dispatchEvent(new w.Event('input', { bubbles: true }));
+  await wait(300);
+  assert('console search updates the online count', countOf('tr.tsc-section--online') === '1');
+  assert('console search updates the offline count', countOf('tr.tsc-section--offline') === '0');
+  pageSearch.value = '';
+  pageSearch.dispatchEvent(new w.Event('input', { bubbles: true }));
+  await wait(300);
+  assert('clearing the console search restores the counts', countOf('tr.tsc-section--online') === '5' && countOf('tr.tsc-section--offline') === '3');
+
+  // no matches: a search empty state with a Clear action
+  pageSearch.value = 'zzzz';
+  pageSearch.dispatchEvent(new w.Event('input', { bubbles: true }));
+  await wait(300);
+  const searchEmpty = d.querySelector('tr.tsc-empty-state');
+  assert('search empty state appears', !!searchEmpty && cs(searchEmpty).display !== 'none');
+  assert('search empty state names the query', !!searchEmpty && searchEmpty.textContent.includes('zzzz'));
+  searchEmpty.querySelector('.tsc-empty-action').click();
+  await wait(300);
+  assert('Clear search restores the counts', countOf('tr.tsc-section--online') === '5' && countOf('tr.tsc-section--offline') === '3');
+  assert('Clear search empties the console box', pageSearch.value === '');
+
+  // copy the machine name / IP straight from a card
+  const copyCard = d.querySelector('table.tsc-machines tbody tr.tsc-online');
+  const copyNameBtn = copyCard.querySelector('.tsc-copy button[data-copy="name"]');
+  const copyIpBtn = copyCard.querySelector('.tsc-copy button[data-copy="ip"]');
+  assert('cards offer a copy-name button', !!copyNameBtn);
+  assert('cards offer a copy-IP button', !!copyIpBtn);
+  copyNameBtn.click();
+  await wait(200);
+  assert('copying shows a confirmation', !!d.querySelector('#tsc-toast.is-on'));
+
+  // sort menu reorders the cards
+  const sortSel = bar.querySelector('[data-tsc="sort"]');
+  sortSel.value = 'name';
+  sortSel.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await wait(300);
+  const firstOnlineCard = d.querySelector('table.tsc-machines tbody tr.tsc-online');
+  const firstName = (firstOnlineCard.querySelector('.name a') || firstOnlineCard.querySelector('a')).textContent.trim();
+  assert('sort by name orders the cards', firstName === 'pixel-9-pro');
+  assert('sort preference is saved', JSON.parse(w.localStorage.getItem('tsc:settings:v1') || '{}').sort === 'name');
+
+  // density toggle
+  const densityBtn = bar.querySelector('[data-tsc="density"]');
+  assert('density starts comfortable', !d.documentElement.classList.contains('tsc-compact'));
+  densityBtn.click();
+  await wait(200);
+  assert('density toggle compacts the grid', d.documentElement.classList.contains('tsc-compact'));
+  assert('density preference is saved', JSON.parse(w.localStorage.getItem('tsc:settings:v1') || '{}').density === 'compact');
+  densityBtn.click();
+  await wait(200);
+  assert('density toggles back', !d.documentElement.classList.contains('tsc-compact'));
+
+  // collapse the offline section
+  const offlineBtn = bar.querySelector('[data-tsc="offline"]');
+  offlineBtn.click();
+  await wait(200);
+  assert('offline toggle hides the offline cards', cs(d.querySelector('tr.tsc-offline')).display === 'none');
+  assert('offline toggle hides the offline header', cs(d.querySelector('tr.tsc-section--offline')).display === 'none');
+  assert('offline preference is saved', JSON.parse(w.localStorage.getItem('tsc:settings:v1') || '{}').hideOffline === true);
+  offlineBtn.click();
+  await wait(200);
+  assert('offline toggle restores the offline cards', cs(d.querySelector('tr.tsc-offline')).display !== 'none');
+
+  // hide every device: empty state with Show all, Tailscale count synced to 0
+  const visibleCards = () => [...d.querySelectorAll('table.tsc-machines tbody tr.tsc-online, table.tsc-machines tbody tr.tsc-offline')].filter((r) => !r.classList.contains('tsc-device-hidden'));
+  let guard = 0;
+  while (visibleCards().length && guard++ < 20) {
+    const card = visibleCards()[0];
+    const link = card.querySelector('.name a') || card.querySelector('a');
+    d.querySelector('#tsc-pill [data-act="pick"]').click();
+    await wait(60);
+    const rr = link.getBoundingClientRect();
+    const oo = { bubbles: true, cancelable: true, clientX: rr.left + 2, clientY: rr.top + 2 };
+    link.dispatchEvent(new w.MouseEvent('mousemove', oo));
+    await wait(40);
+    link.dispatchEvent(new w.MouseEvent('click', oo));
+    await wait(160);
+  }
+  await wait(300);
+  const hiddenEmpty = d.querySelector('tr.tsc-empty-state');
+  assert('empty state when every device is hidden', !!hiddenEmpty && cs(hiddenEmpty).display !== 'none');
+  assert('empty state counts the hidden devices', !!hiddenEmpty && /8 device/i.test(hiddenEmpty.textContent));
+  assert('empty state offers Show all', !!hiddenEmpty && !!hiddenEmpty.querySelector('.tsc-empty-action'));
+  assert('tailscale count synced to the hidden devices', /0 machines/.test((d.querySelector('.count') || {}).textContent || ''));
+  hiddenEmpty.querySelector('.tsc-empty-action').click();
+  await wait(300);
+  assert('Show all restores every device', d.querySelectorAll('table.tsc-machines tr.tsc-device-hidden').length === 0);
+  assert('empty state cleared', !d.querySelector('tr.tsc-empty-state'));
+  assert('tailscale count synced back', /8 machines/.test((d.querySelector('.count') || {}).textContent || ''));
+
+  // put the sort preference back so later state is tidy
+  const sortReset = bar.querySelector('[data-tsc="sort"]');
+  sortReset.value = 'status';
+  sortReset.dispatchEvent(new w.Event('change', { bubbles: true }));
   await wait(200);
 
   // reduced motion is respected in the stylesheet
