@@ -180,6 +180,21 @@ html.tsc-grid table.tsc-machines tbody td[data-tsc-label]::before {
   white-space: nowrap;
 }
 
+/* The "Last seen" value shares the bottom of the card with the Name / IP copy
+   buttons pinned to the bottom-right corner. Reserve their width on the cell
+   so a long timestamp (e.g. "Mar 12, 9:41 AM GMT+5:30") wraps instead of
+   running underneath the buttons. */
+html.tsc-grid table.tsc-machines tbody td.tsc-seen {
+  padding-right: 92px !important;
+}
+
+/* the console may render the value inside a nowrap element - allow it to wrap */
+html.tsc-grid table.tsc-machines tbody td.tsc-seen,
+html.tsc-grid table.tsc-machines tbody td.tsc-seen * {
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+}
+
 /* machine name cell = card title */
 html.tsc-grid table.tsc-machines tbody td.tsc-title {
   padding-right: 44px !important;
@@ -644,6 +659,19 @@ html.dark #tsc-settings button:hover {
   line-height: 1;
 }
 
+/* same missing-arrow problem as the toolbar sort menu */
+#tsc-settings select {
+  appearance: none;
+  padding-right: 26px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2375716e' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+}
+
+html.dark #tsc-settings select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a09b97' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
 #tsc-settings select:hover {
   border-color: color-mix(in oklab, currentColor 40%, transparent);
 }
@@ -792,6 +820,20 @@ html.dark #tsc-settings button:hover {
   white-space: nowrap;
 }
 
+/* `all: unset` drops the native select arrow, so the sort menu read as a
+   plain button. Draw a chevron back (and a lighter one in dark mode). */
+#tsc-toolbar select {
+  appearance: none;
+  padding-right: 26px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2375716e' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+}
+
+html.dark #tsc-toolbar select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a09b97' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
 #tsc-toolbar button:hover,
 #tsc-toolbar select:hover {
   border-color: color-mix(in oklab, currentColor 40%, transparent);
@@ -865,6 +907,13 @@ html:not(.tsc-grid) .tsc-copy {
   font: 600 10px/1 system-ui, -apple-system, "Segoe UI", sans-serif;
   text-align: center;
   white-space: nowrap;
+}
+
+/* `all: unset` restores display to its initial value, which beats the UA
+   [hidden] rule - so a copy button hidden in JS (no IP to copy) would still
+   render. Restore it explicitly. */
+.tsc-copy button[hidden] {
+  display: none;
 }
 
 .tsc-copy button:hover {

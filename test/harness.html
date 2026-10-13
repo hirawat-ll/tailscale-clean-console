@@ -51,6 +51,11 @@ frame.addEventListener('load', async () => {
   const labels = [...d.querySelectorAll('table.tsc-machines td[data-tsc-label]')].map((td) => td.getAttribute('data-tsc-label'));
   assert('last-seen label kept', labels.includes('Last Seen'));
   assert('address/version labels dropped', !labels.some((l) => /^(addresses?|ip|version)$/i.test(l)));
+  // the last-seen cell is marked so its own rule keeps the timestamp clear of
+  // the copy buttons pinned to the card corner
+  const seenCells = [...d.querySelectorAll('table.tsc-machines tbody tr.tsc-online td.tsc-seen, table.tsc-machines tbody tr.tsc-offline td.tsc-seen')];
+  assert('last-seen cell marked on every card', seenCells.length === d.querySelectorAll('table.tsc-machines tbody tr.tsc-online, table.tsc-machines tbody tr.tsc-offline').length);
+  assert('last-seen cell reserves room for the copy buttons', seenCells.every((td) => parseFloat(cs(td).paddingRight) >= 80));
   assert('pill present', !!d.querySelector('#tsc-pill'));
 
   // first-run welcome / help card
@@ -389,6 +394,11 @@ frame.addEventListener('load', async () => {
   const copyIpBtn = copyCard.querySelector('.tsc-copy button[data-copy="ip"]');
   assert('cards offer a copy-name button', !!copyNameBtn);
   assert('cards offer a copy-IP button', !!copyIpBtn);
+  // a copy button hidden by JS (no IP to copy) must really collapse: `all: unset`
+  // on the button would otherwise override the UA [hidden] rule
+  copyIpBtn.hidden = true;
+  assert('a hidden copy button collapses', cs(copyIpBtn).display === 'none');
+  copyIpBtn.hidden = false;
   copyNameBtn.click();
   await wait(200);
   assert('copying shows a confirmation', !!d.querySelector('#tsc-toast.is-on'));

@@ -491,6 +491,9 @@
         td.classList.toggle("tsc-title", isFirst);
         td.classList.toggle("tsc-actions", isLast);
         td.classList.toggle("tsc-omit", omit);
+        /* the last-seen cell shares its baseline with the copy buttons, so it
+           needs a class of its own to keep the timestamp clear of them */
+        td.classList.toggle("tsc-seen", lastSeenIndex >= 0 && i === lastSeenIndex);
 
         const label = isFirst || isLast || omit ? "" : header;
         if (label) {
@@ -557,11 +560,32 @@
     return (text.split("\n")[0] || "").toLowerCase();
   }
 
+  /* Epoch ms for a "Last seen" cell, so the Last-seen sort can order offline
+     machines. The console shows a full date for older entries ("Mar 12, 9:41 AM
+     GMT+5:30") but only a clock time for devices that went offline today
+     ("1:55 PM GMT+5:30"), which Date.parse rejects - treat such a value as
+     today so it still sorts ahead of older dates. */
   function lastSeenTime(cell) {
     if (!cell) return 0;
     const text = (cell.textContent || "").replace(/\s+/g, " ").trim();
-    const time = Date.parse(text);
-    return Number.isNaN(time) ? 0 : time;
+    if (!text || /^connected\b/i.test(text)) return 0;
+
+    const absolute = Date.parse(text);
+    if (!Number.isNaN(absolute)) return absolute;
+
+    const clock = text.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/i);
+    if (clock) {
+      let hours = Number(clock[1]);
+      const minutes = Number(clock[2]);
+      const seconds = Number(clock[3] || 0);
+      const meridiem = (clock[4] || "").toLowerCase();
+      if (meridiem === "pm" && hours < 12) hours += 12;
+      if (meridiem === "am" && hours === 12) hours = 0;
+      const today = new Date();
+      today.setHours(hours, minutes, seconds, 0);
+      return today.getTime();
+    }
+    return 0;
   }
 
   /* Sort a group of rows according to the current sort preference, falling back
