@@ -7,8 +7,8 @@ themselves — it is what you upload to the Chrome Web Store and Firefox Add-ons
 build.py                 captures the mock and builds every image asset
 capture.py               Chromium/Playwright capture of test/mock.html
 package.sh               builds the two upload .zip files from chrome/ and firefox/
-tailscale-clean-console-chrome-1.0.1.zip     upload to Chrome Web Store
-tailscale-clean-console-firefox-1.0.1.zip    upload to Firefox Add-ons (AMO)
+tailscale-clean-console-chrome-1.0.2.zip     upload to Chrome Web Store
+tailscale-clean-console-firefox-1.0.2.zip    upload to Firefox Add-ons (AMO)
 
 icons/icon-1024.png      master icon (the PNGs shipped in the packages are
                          generated from the same drawing code)

@@ -63,11 +63,15 @@ This is an unofficial community project and is not affiliated with Tailscale
 Inc.
 ```
 
-**Version notes (1.0.1)**
+**Version notes (1.0.2)**
 
 ```
-First release: card grid for the Machines page, Online/Offline grouping,
-trial-banner hiding, and an element picker to hide anything.
+Bug-fix release for the card grid:
+- long "Last seen" timestamps no longer run underneath the Name / IP copy
+  buttons (they wrap instead);
+- the copy-IP button is now hidden on cards that have no IP to copy;
+- the sort menu (and the language picker) show a dropdown arrow again;
+- "Last seen" sorting now orders devices that went offline today correctly.
 ```
 
 ## Data collection (AMO form)
@@ -97,7 +101,7 @@ collected/transmitted.
 ## Upload package
 
 ```
-../tailscale-clean-console-firefox-1.0.1.zip
+../tailscale-clean-console-firefox-1.0.2.zip
 ```
 
 AMO accepts this `.zip` directly, or sign it yourself with

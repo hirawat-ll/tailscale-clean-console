@@ -104,7 +104,7 @@ at 1280×800 and drop the PNG in `../screenshots/`.
 ## Upload package
 
 ```
-../tailscale-clean-console-chrome-1.0.1.zip
+../tailscale-clean-console-chrome-1.0.2.zip
 ```
 
 Rebuild with `./assets/package.sh` after bumping the version in
