@@ -1,15 +1,43 @@
 # <img src="assets/icons/icon-1024.png" alt="" width="40" height="40" align="middle"> Tailscale Clean Console
 
-A tiny browser extension that cleans up the Tailscale admin console. It hides
-the "Your free trial has ended" banner, shows your machines as an **Online /
-Offline** card grid, and lets you hide anything else with one-click reset.
+[![CI](https://github.com/hirawat-ll/tailscale-clean-console/actions/workflows/ci.yml/badge.svg)](https://github.com/hirawat-ll/tailscale-clean-console/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/hirawat-ll/tailscale-clean-console?sort=semver&color=4f46e5)](https://github.com/hirawat-ll/tailscale-clean-console/releases)
+[![License: MIT](https://img.shields.io/github/license/hirawat-ll/tailscale-clean-console?color=blue)](LICENSE)
+[![Firefox Add-ons](https://img.shields.io/badge/Firefox%20Add--ons-install-FF7139?logo=firefoxbrowser&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/tailscale-clean-console/)
 
-Live on Firefox Add-ons:
-<https://addons.mozilla.org/en-US/firefox/addon/tailscale-clean-console/>
+A tiny, local-only browser extension that makes the Tailscale admin console
+calmer. It hides the **"Your free trial has ended"** banner and renders your
+machines as an **Online / Offline** card grid — with sorting, live counts,
+copy buttons, keyboard shortcuts, and a one-click picker to hide anything else
+you don't want to see.
+
+No account, no network requests, no build step: everything stays in your
+browser.
+
+<p align="center">Live on Firefox Add-ons →<br><a href="https://addons.mozilla.org/en-US/firefox/addon/tailscale-clean-console/">addons.mozilla.org/firefox/addon/tailscale-clean-console</a></p>
 
 | Before | After |
 | --- | --- |
 | ![before](assets/screenshots/before.png) | ![after](assets/screenshots/after.png) |
+
+## Features
+
+- **Card grid** — the full-width machine table becomes a responsive grid of
+  cards grouped into **Online** and **Offline**, each with live counts.
+- **No trial banner** — the plan / billing card is hidden on every admin page.
+- **Hide anything** — a picker lets you click any element (a promo card, a
+  warning strip, the footer…) and hide it, with one button to bring it back.
+- **Search-aware** — the console's own search box drives the grid: typing
+  filters the cards and updates the Online / Offline totals.
+- **Sort & density** — sort by status, name or last seen; switch between
+  comfortable and compact cards; collapse Offline or hide it entirely.
+- **Copy from the card** — quiet **Name** / **IP** buttons on every machine.
+- **Stays put** — your layout, filters and hidden items are remembered per site,
+  and your scroll position is kept across grid/list toggles.
+- **Keyboard-first** — full shortcuts, undo, and an accessible pill with focus
+  rings and `aria` state.
+- **Private by default** — no servers, no analytics, no remote code. Optional
+  cross-device sync uses your browser's own storage.
 
 ## Install
 
@@ -50,6 +78,8 @@ buttons. Tailscale's own "N machines" line follows your hidden devices, and
 hiding everything brings up an "N devices hidden — Show all" action. Your scroll
 position is kept when you flip between grid and list.
 
+### Settings
+
 The **⚙ Settings** popover lists your hidden devices by name and your hidden
 elements, each with a per-item **Show** and a section **Show all** button, so you
 can restore devices and elements independently. It also lets you pick the
@@ -59,8 +89,13 @@ the pill** for a distraction-free console (bring it back with `p`), **Export** /
 through your browser's own sync storage (off by default; falls back to local
 storage where unavailable).
 
+## Privacy
+
 Your layout and hidden items are saved per-site in `localStorage`
-(`tsc:settings:v1`) and never leave your browser. See [PRIVACY.md](PRIVACY.md).
+(`tsc:settings:v1`) and never leave your browser. The extension runs only on
+`console.tailscale.com/admin/*` and `login.tailscale.com/admin/*`, requests no
+permissions beyond `storage`, and makes no network requests of its own. See
+[PRIVACY.md](PRIVACY.md) for the full detail.
 
 ## Develop
 
@@ -75,10 +110,16 @@ python3 test/run_harness.py   # headless run of both builds (needs: pip install 
 
 CI runs the harness for both builds, `web-ext lint` on Firefox, and the privacy
 / parity checks; `v*` tags publish the store zips to a GitHub release. See
-[ROADMAP.md](ROADMAP.md) for planned work.
+[ROADMAP.md](ROADMAP.md) for planned work and [assets/README.md](assets/README.md)
+for how the screenshots and store packages are built.
 
-Unofficial project, not affiliated with Tailscale Inc. See
-[PRIVACY.md](PRIVACY.md).
+## License
+
+[MIT](LICENSE) © Vishal Hirawat.
+
+Unofficial project, not affiliated with Tailscale Inc. "Tailscale" is a
+trademark of its respective owner and is used only to describe what the
+extension works with.
 
 ---
 
