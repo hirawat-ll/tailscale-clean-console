@@ -1,3 +1,6 @@
+# Store upload archives, built by assets/package.sh
+assets/tailscale-clean-console-*.zip
+
 node_modules/
 web-ext-artifacts/
 *.xpi

@@ -63,7 +63,7 @@ This is an unofficial community project and is not affiliated with Tailscale
 Inc.
 ```
 
-**Version notes (1.0.0)**
+**Version notes (1.0.1)**
 
 ```
 First release: card grid for the Machines page, Online/Offline grouping,
@@ -97,7 +97,7 @@ collected/transmitted.
 ## Upload package
 
 ```
-../tailscale-clean-console-firefox-1.0.0.zip
+../tailscale-clean-console-firefox-1.0.1.zip
 ```
 
 AMO accepts this `.zip` directly, or sign it yourself with
